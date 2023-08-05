@@ -1,0 +1,13 @@
+volumes:
+  data:
+
+services:
+  mariadb:
+    image: mariadb:10.6.14
+    command: [--max_allowed_packet=5G, --wait-timeout=28800, --log_warnings=3, --max_connections=800]
+    environment:
+      - MARIADB_ROOT_PASSWORD=mariadbpw
+    ports:
+      - 3306:3306
+    volumes:
+      - data:/var/lib/mysql

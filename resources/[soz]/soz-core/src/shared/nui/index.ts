@@ -23,6 +23,7 @@ import { NuiProgressMethodMap } from './progress';
 import { NuiRepairMethodMap } from './repair';
 import { NuiTaxiMethodMap } from './taxi';
 import { NuiUpwOrderMenuMethodMap } from './upw_order_menu';
+import { NuiHousingMethodMap } from './housing';
 
 export interface NuiGlobalMethodMap {
     PauseMenuActive: boolean;
@@ -56,9 +57,10 @@ export interface NuiMethodMap {
     hud: NuiHudMethodMap;
     radio: NuiRadioMethodMap;
     radio_vehicle: NuiRadioVehicleMethodMap;
+    housing: NuiHousingMethodMap;
 }
 
 export const eventNameFactory = <App extends keyof NuiMethodMap, Method extends keyof NuiMethodMap[App]>(
     app: App,
-    method: Method
+    method: Method,
 ): string => `${String(app)}:${String(method)}`;

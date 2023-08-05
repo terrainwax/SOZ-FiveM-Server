@@ -629,6 +629,7 @@ export enum NuiEvent {
     DrivingSchoolCheckVehicleSlots = 'soz-core:client:driving-school:check-vehicle-slots',
 
     HousingUpgradeApartment = 'soz-core:client:housing:upgrade-apartment',
+    HousingUpdatePropsPreview = 'soz-core:client:housing:update-props-preview',
 
     ToggleRadar = 'soz-core:client:radar:toggle',
     RedCall = 'soz-core:client:police:red-call',

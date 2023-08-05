@@ -94,7 +94,10 @@ export class HousingProvider {
                     position,
                     distance: 3,
                 },
-            }
+            },
         );
     }
+
+    @OnNuiEvent<{ props: any; camera: any }>(NuiEvent.HousingUpdatePropsPreview)
+    public async updateProps({ props, camera }) {}
 }
