@@ -27,13 +27,10 @@ import { TwitchNewsApp } from '../../../apps/twitch-news';
 import TwitchNewsIcon from '../../../apps/twitch-news/icon';
 import ZutomIcon from '../../../apps/zutom/icon';
 import { ZutomApp } from '../../../apps/zutom/ZutomApp';
-<<<<<<< HEAD
 import ZpotifyIcon from '../../../apps/zpotify/icon';
 import { ZpotifyApp } from '../../../apps/zpotify';
-=======
 import WeatherIcon from '../../../apps/weather/icon';
 import { WeatherApp } from '../../../apps/weather';
->>>>>>> oss
 
 export interface IAppConfig {
     id: string;
