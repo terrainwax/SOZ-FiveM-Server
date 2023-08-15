@@ -9,13 +9,13 @@ import { AppContent } from '@ui/components/AppContent';
 import { AppTitle } from '@ui/components/AppTitle';
 import { useApp } from '@os/apps/hooks/useApps';
 import { ZpotifyPlayer } from './pages/ZpotifyPlayer';
+import { FullPage } from '@ui/layout/FullPage';
 
 export const ZpotifyApp: React.FC = () => {
     const messages = useApp('zpotify');
-    const backgroundClass = useBackground();
 
     return (
-        <FullPageWithHeader className={backgroundClass}>
+        <FullPage className='bg-[#121C0A]'>
             <Transition
                 appear={true}
                 show={true}
@@ -27,14 +27,11 @@ export const ZpotifyApp: React.FC = () => {
                 leaveTo="scale-[0.0] opacity-0"
             >
                 <AppWrapper className="h-[775px] w-full">
-                    <AppContent>
                         <Routes>
                             <Route index element={<ZpotifyPlayer />} />
                         </Routes>
-                        
-                    </AppContent>
                 </AppWrapper>
             </Transition>
-        </FullPageWithHeader>
+        </FullPage>
     );
 };

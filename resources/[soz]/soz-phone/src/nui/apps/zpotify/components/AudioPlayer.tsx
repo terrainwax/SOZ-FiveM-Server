@@ -11,7 +11,7 @@ export const AudioPlayer: React.FC = () => {
         if (sozCloud.globalPlayerRef && sozCloud.soundPlayer)
         {
             sozCloud.soundPlayer.setOptions({container: sozCloud.globalPlayerRef})
-            sozCloud.soundPlayer.play()
+            
         }
         if (sozCloud.globalPlayerRef)
             return

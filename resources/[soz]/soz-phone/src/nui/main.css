@@ -8,6 +8,7 @@
 @tailwind components;
 @tailwind utilities;
 @import url("https://fonts.googleapis.com/css2?family=Prompt");
+@import url('https://fonts.googleapis.com/css2?family=Rubik');
 
 body {
   font-family: 'SF Pro', sans-serif;
