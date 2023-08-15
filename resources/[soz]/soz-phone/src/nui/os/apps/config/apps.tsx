@@ -27,6 +27,8 @@ import { TwitchNewsApp } from '../../../apps/twitch-news';
 import TwitchNewsIcon from '../../../apps/twitch-news/icon';
 import ZutomIcon from '../../../apps/zutom/icon';
 import { ZutomApp } from '../../../apps/zutom/ZutomApp';
+import ZpotifyIcon from '../../../apps/zpotify/icon';
+import { ZpotifyApp } from '../../../apps/zpotify';
 
 export interface IAppConfig {
     id: string;
@@ -128,6 +130,13 @@ export const APPS: IAppConfig[] = [
         path: '/zutom',
         component: <ZutomApp />,
         icon: ZutomIcon,
+    },
+    {
+        id: 'zpotify',
+        nameLocale: 'APPS_ZPOTIFY',
+        path: '/zpotify',
+        component: <ZpotifyApp />,
+        icon: ZpotifyIcon,
     },
     {
         id: 'camera',

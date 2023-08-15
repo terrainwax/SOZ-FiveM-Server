@@ -26,6 +26,7 @@ import { useMessagesService } from './services/useMessagesService';
 import { usePhoneService } from './services/usePhoneService';
 import { usePhotoService } from './services/usePhotoService';
 import { useSimCardService } from './services/useSimCardService';
+import { AudioPlayer } from './apps/zpotify/components/AudioPlayer';
 
 function Phone() {
     const { apps } = useApps();
@@ -65,6 +66,7 @@ function Phone() {
         <PhoneWrapper>
             <NotificationAlert />
             <PhoneSnackbar />
+            <AudioPlayer />
             <Routes>
                 <Route path="/" element={<HomeApp />} />
                 {callModal && <Route path="/call" element={<CallModal />} />}
