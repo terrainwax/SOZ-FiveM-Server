@@ -38,10 +38,13 @@ const DISTANCE_STORE_VEHICLE_THRESHOLD = 15.0;
 const BlipConfigMap: Partial<Record<GarageType, Partial<Record<GarageCategory, BlipConfig | null>>>> = {
     [GarageType.Private]: {
         [GarageCategory.Car]: { name: 'Parking Privé', sprite: 357, color: 5 },
+        [GarageCategory.Sea]: { name: 'Port Privé', sprite: 356, color: 5 },
     },
     [GarageType.Public]: {
-        [GarageCategory.Car]: { name: 'Parking public', sprite: 357, color: 3 },
+        [GarageCategory.Car]: { name: 'Parking Public', sprite: 357, color: 3 },
         [GarageCategory.Air]: { name: 'Héliport Public', sprite: 360, color: 3 },
+        [GarageCategory.All]: { name: 'Parking Public', sprite: 357, color: 3 },
+        [GarageCategory.Sea]: { name: 'Port Public', sprite: 356, color: 3 },
     },
     [GarageType.Depot]: {
         [GarageCategory.Car]: { name: 'Fourrière', sprite: 68, color: 3 },
@@ -140,22 +143,24 @@ export class VehicleGarageProvider {
                 });
             }
 
-            if (garage.type === GarageType.Depot) {
+            if (garage.type === GarageType.Depot || garage.category == GarageCategory.Sea) {
                 this.objectFactory.create(
                     jobGaragePayStation,
                     [...garage.zone.center, garage.zone.heading] as Vector4,
                     true
                 );
 
-                targets.push({
-                    label: 'Accéder à la fourrière',
-                    icon: 'c:garage/Fourriere.png',
-                    action: () => {
-                        this.enterGarage(garageIdentifier, garage);
-                    },
-                });
+                if (garage.type === GarageType.Depot) {
+                    targets.push({
+                        label: 'Accéder à la fourrière',
+                        icon: 'c:garage/Fourriere.png',
+                        action: () => {
+                            this.enterGarage(garageIdentifier, garage);
+                        },
+                    });
 
-                this.pounds[garageIdentifier] = garage;
+                    this.pounds[garageIdentifier] = garage;
+                }
             }
 
             if (garage.type === GarageType.Job) {
@@ -536,6 +541,13 @@ export class VehicleGarageProvider {
         this.nuiMenu.closeMenu();
     }
 
+    @OnNuiEvent(NuiEvent.VehicleGarageTransfer)
+    public async transferVehicle({ id, from, to }: { id: number; from: Garage; to: Garage }) {
+        TriggerServerEvent(ServerEvent.VEHICLE_GARAGE_TRANSFER, id, from, to);
+
+        this.nuiMenu.closeMenu();
+    }
+
     private async enterGarage(id: string, garage: Garage) {
         const vehicles = await emitRpc<GarageVehicle[]>(RpcServerEvent.VEHICLE_GARAGE_GET_VEHICLES, id, garage);
         if (vehicles === null) {
@@ -571,6 +583,21 @@ export class VehicleGarageProvider {
                 free_places,
                 max_places,
                 has_fake_ticket: this.inventoryManager.hasEnoughItem('parking_ticket_fake', 1),
+                transferGarageList:
+                    garage.transferList
+                        ?.map(garageId => {
+                            const garage = this.garageRepository.get()[garageId];
+
+                            if (!garage) {
+                                return null;
+                            }
+
+                            return {
+                                id: garageId,
+                                garage,
+                            };
+                        })
+                        .filter(garage => garage !== null) ?? [],
             },
             {
                 position: {

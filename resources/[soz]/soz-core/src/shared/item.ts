@@ -1,3 +1,4 @@
+import { DrugContractInfo } from '@private/shared/drugs';
 import { MissiveType } from '@private/shared/missive';
 
 import { WeaponComponentType } from './weapons/attachment';
@@ -21,6 +22,8 @@ export type ItemType =
     | 'flavor'
     | 'furniture'
     | 'liquor'
+    | 'fish'
+    | 'fishing_garbage'
     | 'outfit';
 
 type BaseItem = {
@@ -31,6 +34,7 @@ type BaseItem = {
     description: string;
     unique: boolean;
     useable: boolean;
+    carrybox: string;
 };
 
 export type Nutrition = {
@@ -42,6 +46,8 @@ export type Nutrition = {
     lipid: number;
     sugar: number;
     protein: number;
+    drug: number;
+    stress: number;
 };
 
 export type WeaponItem = BaseItem & {
@@ -49,10 +55,6 @@ export type WeaponItem = BaseItem & {
 };
 
 export type AmmoItem = BaseItem & {
-    type: 'item';
-};
-
-export type DrugItem = BaseItem & {
     type: 'item';
 };
 
@@ -98,6 +100,24 @@ export type LiquorItem = BaseItem & {
     nutrition: Nutrition;
     animation?: AnimationItem;
     prop?: PropItem;
+};
+
+export type FishItem = BaseItem & {
+    type: 'fish';
+    fishing_area: Array<string>;
+    fishing_weather: Array<string>;
+    fishing_period: Array<string>;
+    min_weight: number;
+    max_weight: number;
+    min_length: number;
+    max_length: number;
+    sozedex_id: number;
+    fishman_status: string;
+    price: number;
+};
+
+export type FishingGarbageItem = BaseItem & {
+    type: 'fishing_garbage';
 };
 
 // Fight For Style
@@ -151,6 +171,11 @@ export type CocktailItem = BaseItem & {
     prop?: PropItem;
 };
 
+export type DrugItem = BaseItem & {
+    type: 'drug';
+    nutrition: Nutrition;
+};
+
 export type MealMetadata = {
     name: string;
     metadata: InventoryItemMetadata;
@@ -179,6 +204,11 @@ export type InventoryItemMetadata = {
     id?: string;
     model?: string;
     crateElements?: MealMetadata[];
+    // Fishing
+    weight?: number;
+    length?: number;
+    bait?: any;
+    drugContract?: DrugContractInfo;
 };
 
 export type InventoryItem = {
@@ -214,4 +244,6 @@ export type Item =
     | SewingRawMaterialItem
     | FabricItem
     | GarmentItem
-    | OutfitItem;
+    | OutfitItem
+    | FishItem
+    | FishingGarbageItem;

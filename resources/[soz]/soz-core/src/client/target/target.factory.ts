@@ -15,7 +15,6 @@ export type TargetOptions = {
     canInteract?: (entity) => boolean | Promise<boolean>;
     action?: (entity) => void;
     job?: string | JobType | Partial<{ [key in JobType]: number }>;
-    license?: string;
     item?: string;
 };
 
@@ -133,6 +132,17 @@ export class TargetFactory {
         distance = DEFAULT_DISTANCE
     ) {
         exports['qb-target'].AddTargetModel(models, {
+            options: targets,
+            distance: distance,
+        });
+    }
+
+    public createForEntity(
+        entities: string[] | number[] | string | number,
+        targets: TargetOptions[],
+        distance = DEFAULT_DISTANCE
+    ) {
+        exports['qb-target'].AddTargetEntity(entities, {
             options: targets,
             distance: distance,
         });

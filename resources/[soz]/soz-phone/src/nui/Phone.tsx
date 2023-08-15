@@ -27,6 +27,7 @@ import { usePhoneService } from './services/usePhoneService';
 import { usePhotoService } from './services/usePhotoService';
 import { useSimCardService } from './services/useSimCardService';
 import { AudioPlayer } from './apps/zpotify/components/AudioPlayer';
+import { useAppWeatherService } from './services/app/useAppWeatherService';
 
 function Phone() {
     const { apps } = useApps();
@@ -57,6 +58,7 @@ function Phone() {
     useAppInvoicesService();
     useAppTwitchNewsService();
     useAppSocietyService();
+    useAppWeatherService();
 
     if (config.wallpaper === undefined) {
         return null;

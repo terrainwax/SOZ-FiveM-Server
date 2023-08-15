@@ -34,6 +34,10 @@ export enum JobPermission {
     SocietyBankAccount = 'society-bank-account',
     SocietyBankInvoices = 'society-bank-invoices',
     SocietyTakeOutPound = 'society-take-out-pound',
+    SocietyPublicGarage = 'society-public-garage',
+    SocietyPrivateGarage = 'society-private-garage',
+    SocietyPublicPort = 'society-public-port',
+    SocietyPrivatePort = 'society-private-port',
     SocietyViewCompanyPanel = 'society-view-company-panel',
     NewsManageArticle = 'manage-article',
     CashTransfer_CollectBags = 'collect-bags',
@@ -63,6 +67,7 @@ export enum JobPermission {
     UpwOrder = 'order',
     UpwChangePrice = 'upw-change-price',
     FDOFedPound = 'fdo-fed-pound',
+    OnDutyView = 'view-employe-on-duty',
 }
 
 export const JobLabel: Record<JobType, string> = {

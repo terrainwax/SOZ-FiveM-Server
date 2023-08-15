@@ -15,6 +15,7 @@ import { NuiMenu } from '../../nui/nui.menu';
 import { PlayerService } from '../../player/player.service';
 import { TargetFactory } from '../../target/target.factory';
 import { JobPermissionService } from '../job.permission.service';
+import { JobService } from '../job.service';
 
 @Provider()
 export class MandatoryProvider {
@@ -48,12 +49,15 @@ export class MandatoryProvider {
     @Inject(JobPermissionService)
     private jobPermissionService: JobPermissionService;
 
+    @Inject(JobService)
+    private jobService: JobService;
+
     private state = {
         radar: false,
     };
 
     @Once(OnceStep.PlayerLoaded)
-    public onPlayerLoaded() {
+    public setupMdrJob() {
         this.createBlips();
 
         this.targetFactory.createForBoxZone(
@@ -83,6 +87,21 @@ export class MandatoryProvider {
                     label: 'Fin de service',
                     canInteract: () => {
                         return this.playerService.isOnDuty();
+                    },
+                    job: JobType.MDR,
+                },
+                {
+                    icon: 'fas fa-users',
+                    label: 'Employé(e)s en service',
+                    action: () => {
+                        TriggerServerEvent('QBCore:GetEmployOnDuty');
+                    },
+                    canInteract: () => {
+                        const player = this.playerService.getPlayer();
+                        return (
+                            this.playerService.isOnDuty() &&
+                            this.jobService.hasPermission(player.job.id, JobPermission.OnDutyView)
+                        );
                     },
                     job: JobType.MDR,
                 },
@@ -170,7 +189,8 @@ export class MandatoryProvider {
             TriggerEvent(
                 'police:client:RedCall',
                 '555-POLICE',
-                `Code Rouge !!! Un membre de Mandatory a besoin d'aide vers ${name}`
+                `Code Rouge !!! Un membre de Mandatory a besoin d'aide vers ${name}`,
+                `Code Rouge !!! Un membre de Mandatory a besoin d'aide vers <span {class}>${name}</span>`
             );
         }
 
@@ -181,7 +201,7 @@ export class MandatoryProvider {
     public useTicket(dlc: string) {
         const [player, distance] = this.playerService.getClosestPlayer();
 
-        if (player && distance < 2.5) {
+        if (player != -1 && distance < 2.5) {
             const animDict = 'mp_common';
             this.resourceLoader.loadAnimationDictionary(animDict);
             TaskPlayAnim(PlayerPedId(), animDict, 'givetake2_a', 8.0, 8.0, -1, 0, 0, true, false, true);

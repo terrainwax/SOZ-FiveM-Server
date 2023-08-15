@@ -298,6 +298,9 @@ RegisterNetEvent("housing:server:SellApartment", function(propertyId, apartmentI
             apartmentId,
         })
 
+        exports["soz-inventory"]:ClearByOwner(apartment.identifier);
+        exports["soz-bank"]:ClearAccount(apartment.identifier);
+
         if apartment:HasRoommate() then
             local roommateCitizenId = apartment:GetRoomMate()
             MySQL.update.await("UPDATE player_vehicles SET garage = 'airportpublic' WHERE citizenid = ? and garage = ?",
@@ -489,8 +492,8 @@ RegisterNetEvent("housing:server:GiveTemporaryAccess", function(propertyId, apar
 
     apartment:AddTemporaryAccess(Target.PlayerData.citizenid)
 
-    TriggerClientEvent("animation:client:give", Player.PlayerData.source);
-    TriggerClientEvent("animation:client:give", Target.PlayerData.source);
+    TriggerClientEvent("soz-core:client:animation:give", Player.PlayerData.source);
+    TriggerClientEvent("soz-core:client:animation:give", Target.PlayerData.source);
 
     TriggerClientEvent("soz-core:client:notification:draw", Player.PlayerData.source, "Vous avez donné un accès à votre maison")
     TriggerClientEvent("soz-core:client:notification:draw", Target.PlayerData.source, "Vous avez reçu un accès à une maison")

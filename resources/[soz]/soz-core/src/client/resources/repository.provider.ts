@@ -1,3 +1,6 @@
+import { DrugSeedlingRepository } from '@private/client/resources/drug.seedling.repository';
+import { DrugSellLocationRepository } from '@private/client/resources/drug.sell.location.repository';
+
 import { Once, OnceStep, OnEvent } from '../../core/decorators/event';
 import { Inject } from '../../core/decorators/injectable';
 import { Provider } from '../../core/decorators/provider';
@@ -5,7 +8,10 @@ import { OnceLoader } from '../../core/loader/once.loader';
 import { ClientEvent } from '../../shared/event';
 import { FuelStationRepository } from './fuel.station.repository';
 import { GarageRepository } from './garage.repository';
+import { HousingRepository } from './housing.repository';
 import { JobGradeRepository } from './job.grade.repository';
+import { RaceRepository } from './race.repository';
+import { UnderTypesShopRepository } from './under_types.shop.repository';
 import { UpwChargerRepository } from './upw.station.repository';
 import { VehicleRepository } from './vehicle.repository';
 
@@ -26,6 +32,21 @@ export class RepositoryProvider {
     @Inject(UpwChargerRepository)
     private upwChargerRepository: UpwChargerRepository;
 
+    @Inject(UnderTypesShopRepository)
+    private underTypesShopRepository: UnderTypesShopRepository;
+
+    @Inject(HousingRepository)
+    private housingRepository: HousingRepository;
+
+    @Inject(DrugSeedlingRepository)
+    private drugSeedlingRepository: DrugSeedlingRepository;
+
+    @Inject(DrugSellLocationRepository)
+    private drugSellLocationRepository: DrugSellLocationRepository;
+
+    @Inject(RaceRepository)
+    private raceRepository: RaceRepository;
+
     @Inject(OnceLoader)
     private onceLoader: OnceLoader;
 
@@ -36,6 +57,11 @@ export class RepositoryProvider {
         await this.vehicleRepository.load();
         await this.fuelStationRepository.load();
         await this.upwChargerRepository.load();
+        await this.housingRepository.load();
+        await this.underTypesShopRepository.load();
+        await this.drugSeedlingRepository.load();
+        await this.drugSellLocationRepository.load();
+        await this.raceRepository.load();
 
         this.onceLoader.trigger(OnceStep.RepositoriesLoaded);
     }
@@ -57,6 +83,19 @@ export class RepositoryProvider {
                 break;
             case 'upwCharger':
                 this.upwChargerRepository.update(data);
+                break;
+            case 'housing':
+                this.housingRepository.update(data);
+                break;
+            case 'underTypesShop':
+                this.underTypesShopRepository.update(data);
+                break;
+            case 'drugSeedling':
+                this.drugSeedlingRepository.update(data);
+                break;
+            case 'drugSellLocation':
+                this.drugSellLocationRepository.update(data);
+                break;
         }
     }
 }

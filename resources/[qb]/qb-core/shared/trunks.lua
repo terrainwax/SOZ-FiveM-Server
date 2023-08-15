@@ -107,9 +107,22 @@ QBShared.Trunks = {
     
     -- Army
     [GetHashKey('barracks')] = { slot = 50, weight = 1000000 },
+    [GetHashKey('dinghy5')] = { slot = 50, weight = 200000 },
 
     -- Quads
     [GetHashKey('blazer')] = { slot = 50, weight = 20000 },
     [GetHashKey('blazer3')] = { slot = 50, weight = 20000 },
     [GetHashKey('blazer4')] = { slot = 50, weight = 20000 },
+
+    -- Boats
+    [GetHashKey('seashark')] = { slot = 50, weight = 20000 },
+    [GetHashKey('suntrap')] = { slot = 50, weight = 40000 },
+    [GetHashKey('tropic')] = { slot = 50, weight = 40000 },
+    [GetHashKey('tropic2')] = { slot = 50, weight = 40000 },
+    [GetHashKey('tropic3')] = { slot = 50, weight = 40000 },
+    [GetHashKey('dinghy')] = { slot = 50, weight = 40000 },
+    [GetHashKey('squalo')] = { slot = 50, weight = 80000 },
+    [GetHashKey('jetmax')] = { slot = 50, weight = 80000 },
+    [GetHashKey('speeder')] = { slot = 50, weight = 80000 },
+    [GetHashKey('speeder2')] = { slot = 50, weight = 80000 },
 }

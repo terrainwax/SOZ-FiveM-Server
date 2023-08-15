@@ -18,6 +18,7 @@ import {
 import { Notifier } from '../notifier';
 import { PlayerService } from '../player/player.service';
 import { ResourceLoader } from '../resources/resource.loader';
+import { VehicleConditionProvider } from './vehicle.condition.provider';
 import { VehicleService } from './vehicle.service';
 import { VehicleStateService } from './vehicle.state.service';
 
@@ -137,11 +138,7 @@ export class VehicleSpawnProvider {
             hash = GetHashKey(vehicleSpawn.model);
 
             if (!IsModelInCdimage(hash) || !IsModelAVehicle(hash)) {
-                console.error(
-                    'could not load model with given hash or model name',
-                    vehicleSpawn.model,
-                    vehicleSpawn.hash
-                );
+                this.logger.error(`could not load model with given hash or model name ${vehicleSpawn.model} ${hash}`);
 
                 return null;
             }
@@ -159,23 +156,46 @@ export class VehicleSpawnProvider {
             true
         );
 
+        if (!vehicle) {
+            this.logger.error(`could not create vehicle with hash ${hash}`);
+
+            return null;
+        }
+
+        SetEntityAsMissionEntity(vehicle, true, true);
+
         this.resourceLoader.unloadModel(hash);
         let attempts = 0;
 
+        let networkId = NetworkGetNetworkIdFromEntity(vehicle);
+
+        if (networkId) {
+            SetNetworkIdExistsOnAllMachines(networkId, true);
+        }
+
         while (!NetworkGetEntityIsNetworked(vehicle) && attempts < 10) {
             NetworkRegisterEntityAsNetworked(vehicle);
+            networkId = NetworkGetNetworkIdFromEntity(vehicle);
+
+            if (networkId) {
+                SetNetworkIdExistsOnAllMachines(networkId, true);
+            }
+
             attempts += 1;
             await wait(100);
         }
 
         if (!NetworkGetEntityIsNetworked(vehicle)) {
-            this.logger.error(`could not create vehicle on network, try again latter`);
+            this.logger.error(
+                `could not create vehicle on network, try again latter, entity id : ${vehicle}, network id : ${networkId}`
+            );
+
             DeleteVehicle(vehicle);
 
             return null;
         }
 
-        const networkId = NetworkGetNetworkIdFromEntity(vehicle);
+        networkId = NetworkGetNetworkIdFromEntity(vehicle);
 
         if (!NetworkDoesEntityExistWithNetworkId(networkId) || !NetworkDoesNetworkIdExist(networkId)) {
             this.logger.error(`network id ${networkId} does not exist, cannot spawn vehicle`);
@@ -271,7 +291,9 @@ export class VehicleSpawnProvider {
             await wait(0);
         }
 
-        SetVehicleOnGroundProperly(vehicle);
+        if (!IsThisModelABoat(vehicleSpawn.model)) {
+            SetVehicleOnGroundProperly(vehicle);
+        }
 
         for (let i = -1; i < 1; i++) {
             const ped = GetPedInVehicleSeat(vehicle, i);
@@ -287,12 +309,17 @@ export class VehicleSpawnProvider {
             TaskWarpPedIntoVehicle(ped, vehicle, -1);
         }
 
+        if (volatile.plate) {
+            SetVehicleNumberPlateText(vehicle, volatile.plate);
+        }
+
+        this.vehicleStateService.setVehicleState(vehicle, volatile, true);
+
         if (vehicleSpawn.modification) {
             this.vehicleService.applyVehicleConfiguration(vehicle, vehicleSpawn.modification);
         }
 
-        this.vehicleService.syncVehicle(vehicle, volatile);
-        this.vehicleStateService.setVehicleState(vehicle, volatile, true);
+        VehicleConditionProvider.updateHealthReason.set(vehicle, 'apply condition from spawn');
         this.vehicleService.applyVehicleCondition(vehicle, condition, condition);
     }
 

@@ -1,6 +1,6 @@
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["filterJson"]
+  previewFeatures = ["metrics"]
   binaryTargets   = ["native", "linux-musl", "windows"]
   engineType      = "binary"
 }
@@ -305,6 +305,10 @@ model player {
   records_history_player player_records_history[] @relation("records_history_player")
   records_history_author player_records_history[] @relation("records_history_author")
   records_history_deletor player_records_history[] @relation("records_history_deletor")
+  fishes                 player_fish[] @relation("fishes")
+  sozedex_rewards        player_sozedex_rewards[] @relation("sozedex_rewards")
+  race_scores            race_score[] @relation("race_scores")
+
 
   @@index([id], map: "id")
   @@index([last_updated], map: "last_updated")
@@ -400,6 +404,7 @@ model Vehicle {
   jobName         String? @map("job_name") @db.Text
   stock           Int?    @default(0)
   radio           Boolean @default(false)
+  maxStock        Int?    @default(2)
 
   @@index([category])
   @@index([dealershipId], map: "vehicles_dealership_idx")
@@ -556,4 +561,86 @@ enum report_type {
   investigation
   report
   complaint
+}
+
+model drugs_seedling {
+  id          Int       @id @default(autoincrement())
+  drug        String
+  location    String   @db.Text
+  created_at  DateTime @default(now()) @db.Timestamp(0)
+  nb_water    Int
+  garden      String?  @db.VarChar(50)
+  citizenid   String   @db.VarChar(50)
+  skillBoost  Boolean
+  property    Int?
+}
+
+model drugs_sell_location {
+  id          Int       @id @default(autoincrement())
+  name        String    @db.VarChar(50)
+  type        String    @db.VarChar(50)
+  zone        String    @db.Text
+
+  @@unique([name, type])
+}
+
+model drugs_garden_guest {
+  id          Int      @id @default(autoincrement())
+  citizenid   String   @db.VarChar(50)
+  guest       String   @db.VarChar(50)
+
+  @@unique([citizenid, guest])
+}
+
+model player_fish {
+  player      player   @relation(fields: [citizenId], references: [citizenid], onDelete: Cascade, map: "FK_fish_player", name: "fishes")
+  citizenId   String   @db.VarChar(50)
+  fishId      String   @db.VarChar(100)
+  quantity    Int
+  maxWidth    Int
+  maxWeight   Int
+  maxResell   Int
+  lastFishAt  DateTime @default(now()) @db.Timestamp(0)
+
+  @@id([citizenId, fishId])
+}
+model player_sozedex_rewards {
+  player      player   @relation(fields: [citizenId], references: [citizenid], onDelete: Cascade, map: "FK_player_sozedex_rewards", name: "sozedex_rewards")
+  citizenId   String   @db.VarChar(50)
+  itemId      String   @db.VarChar(100)
+  claimedAt  DateTime @default(now()) @db.Timestamp(0)
+
+  @@id([citizenId, itemId])
+}
+
+model race {
+  id           Int       @id @default(autoincrement())
+  name         String    @db.VarChar(50)
+  model        String    @db.VarChar(50)
+  npc_position String    @db.Text
+  start        String    @db.Text
+  checkpoints  String    @db.Text
+  enabled      Boolean
+  fps          Boolean
+  
+  scores            race_score[] @relation("race_scores_race")
+  
+  @@index([name], map: "name")
+}
+
+model race_score {
+  player      player   @relation(fields: [citizenid], references: [citizenid], onDelete: Cascade, map: "FK_race_scores_player", name: "race_scores")
+  citizenid   String   @db.VarChar(50)
+  race        race     @relation(fields: [race_id], references: [id], onDelete: Cascade, map: "FK_race_id", name: "race_scores_race")
+  race_id     Int
+  best_run    String    @db.Text
+  best_splits String    @db.Text
+
+  @@id([citizenid, race_id])
+}
+
+model radar {
+  id                Int       @id
+  speed_record      Int
+  citizedid_record  String   @db.VarChar(50)
 }

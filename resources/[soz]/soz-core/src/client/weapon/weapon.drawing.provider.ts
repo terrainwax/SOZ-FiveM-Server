@@ -46,11 +46,7 @@ export class WeaponDrawingProvider {
     }
 
     private async drawWeapon() {
-        if (
-            !this.shouldDrawWeapon ||
-            !this.shouldAdminDrawWeapon ||
-            this.playerService.getState().isWearingPatientOutfit
-        ) {
+        if (!this.shouldDrawWeapon || !this.shouldAdminDrawWeapon) {
             return;
         }
 
@@ -102,8 +98,8 @@ export class WeaponDrawingProvider {
         this.weaponAttached = {};
     }
 
-    @Once(OnceStep.PlayerLoaded)
-    async onPlayerLoaded(player: PlayerData) {
+    @Once(OnceStep.PlayerLoaded, true)
+    async setupPlayerWeaponsDraw(player: PlayerData) {
         this.shouldDrawWeapon = true;
         this.playerLoaded = true;
         await this.updateWeaponDrawList(player.items);

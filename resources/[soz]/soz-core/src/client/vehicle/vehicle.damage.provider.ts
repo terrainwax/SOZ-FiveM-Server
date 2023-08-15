@@ -102,7 +102,7 @@ export class VehicleDamageProvider {
             return;
         }
 
-        if (!NetworkHasControlOfEntity(vehicle)) {
+        if (!NetworkGetEntityIsNetworked(vehicle) || !NetworkHasControlOfEntity(vehicle)) {
             this.currentVehicleStatus = null;
 
             return;
@@ -167,7 +167,13 @@ export class VehicleDamageProvider {
         if (bodyHealthDiff > 0.1) {
             this.currentVehicleStatus.bodyHealth = lastVehicleStatus.bodyHealth - bodyHealthDiff;
             SetVehicleBodyHealth(vehicle, this.currentVehicleStatus.bodyHealth);
+
+            VehicleConditionProvider.updateHealthReason.set(
+                vehicle,
+                `update vehicle damage, previous : ${lastVehicleStatus.bodyHealth}, current : ${this.currentVehicleStatus.bodyHealth}}`
+            );
         }
+
         if (isVehicleModelElectric(GetEntityModel(vehicle))) {
             this.currentVehicleStatus.tankHealth = 1000;
             SetVehiclePetrolTankHealth(vehicle, 1000);
@@ -224,7 +230,10 @@ export class VehicleDamageProvider {
     public async cancelElectricTankDamage() {
         const vehicles: number[] = GetGamePool('CVehicle');
         for (const vehicle of vehicles) {
-            if (GetPlayerServerId(NetworkGetEntityOwner(vehicle)) !== GetPlayerServerId(PlayerId())) {
+            if (
+                !NetworkGetEntityIsNetworked(vehicle) ||
+                GetPlayerServerId(NetworkGetEntityOwner(vehicle)) !== GetPlayerServerId(PlayerId())
+            ) {
                 continue;
             }
             if (isVehicleModelElectric(GetEntityModel(vehicle))) {

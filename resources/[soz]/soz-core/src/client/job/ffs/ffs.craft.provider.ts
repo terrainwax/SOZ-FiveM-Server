@@ -4,7 +4,6 @@ import { Provider } from '../../../core/decorators/provider';
 import { ServerEvent } from '../../../shared/event';
 import { FfsConfig, Process } from '../../../shared/job/ffs';
 import { InventoryManager } from '../../inventory/inventory.manager';
-import { ItemService } from '../../item/item.service';
 import { PlayerService } from '../../player/player.service';
 import { TargetFactory, TargetOptions } from '../../target/target.factory';
 
@@ -13,9 +12,6 @@ export class FightForStyleCraftProvider {
     @Inject(InventoryManager)
     private inventoryManager: InventoryManager;
 
-    @Inject(ItemService)
-    private itemService: ItemService;
-
     @Inject(PlayerService)
     private playerService: PlayerService;
 
@@ -23,7 +19,7 @@ export class FightForStyleCraftProvider {
     private targetFactory: TargetFactory;
 
     @Once(OnceStep.PlayerLoaded)
-    public onPlayerLoaded() {
+    public setupFfsJobCraft() {
         const { craftZones, luxuryCraftZones, shoesCraftZones } = FfsConfig.craft.zones;
         const { craftProcesses, luxuryCraftProcesses, shoesCraftProcesses } = FfsConfig.craft.processes;
 

@@ -103,7 +103,11 @@ export class VehicleFuelProvider {
                 });
             }
 
-            if (station.type === FuelStationType.Private || station.fuel === FuelType.Kerosene) {
+            if (
+                station.type === FuelStationType.Private ||
+                station.fuel === FuelType.Kerosene ||
+                station.name === 'Cayo'
+            ) {
                 station.entity = this.objectFFactory.create(station.model, station.position, true);
             }
         }
@@ -393,7 +397,10 @@ export class VehicleFuelProvider {
         }
 
         if (
-            (IsThisModelAHeli(model) || IsThisModelAPlane(model) || isVehicleModelElectric(model)) &&
+            (IsThisModelABoat(model) ||
+                IsThisModelAHeli(model) ||
+                IsThisModelAPlane(model) ||
+                isVehicleModelElectric(model)) &&
             station.fuel === FuelType.Essence
         ) {
             this.notifier.notify("~r~Vous ne pouvez pas remplir ce véhicule avec de l'essence.", 'error');
@@ -402,7 +409,12 @@ export class VehicleFuelProvider {
             return;
         }
 
-        if (!IsThisModelAHeli(model) && !IsThisModelAPlane(model) && station.fuel === FuelType.Kerosene) {
+        if (
+            !IsThisModelABoat(model) &&
+            !IsThisModelAHeli(model) &&
+            !IsThisModelAPlane(model) &&
+            station.fuel === FuelType.Kerosene
+        ) {
             this.notifier.notify('~r~Vous ne pouvez pas remplir ce véhicule avec du kérosene.', 'error');
             await this.disableStationPistol();
 

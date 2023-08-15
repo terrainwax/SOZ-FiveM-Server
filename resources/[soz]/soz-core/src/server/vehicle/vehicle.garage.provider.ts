@@ -20,6 +20,7 @@ import {
     GarageCategory,
     GarageType,
     GarageVehicle,
+    getTransferPrice,
     HouseGarageLimits,
     PlaceCapacity,
 } from '../../shared/vehicle/garage';
@@ -43,6 +44,7 @@ const ALLOWED_VEHICLE_TYPE: Record<GarageCategory, string[]> = {
     [GarageCategory.Car]: ['automobile', 'bike', 'trailer'],
     [GarageCategory.Air]: ['heli', 'plane'],
     [GarageCategory.Sea]: ['boat', 'submarine'],
+    [GarageCategory.All]: ['automobile', 'bike', 'plane', 'heli'],
 };
 
 const FORMAT_LOCALIZED: Intl.DateTimeFormatOptions = {
@@ -100,26 +102,16 @@ export class VehicleGarageProvider {
     @Once(OnceStep.RepositoriesLoaded)
     public async init(): Promise<void> {
         const queries = `
-            UPDATE player_vehicles SET state = 1, garage = 'airportpublic' WHERE state = 0 AND job IS NULL AND category = 'car';
+            UPDATE player_vehicles SET state = 1, garage = 'airport_public' WHERE state = 0 AND job IS NULL AND category = 'car';
             UPDATE player_vehicles SET state = 3, garage = job WHERE state = 0 AND job IS NOT NULL AND category = 'car';
             UPDATE player_vehicles SET state = 1, garage = 'airport_air' WHERE state = 0 AND job IS NULL AND category = 'air';
             UPDATE player_vehicles SET state = 3, garage = concat(job,'_air') WHERE state = 0 AND job IS NOT NULL AND category = 'air';
+            UPDATE player_vehicles SET state = 1, garage = 'docks_boat' WHERE state = 0 AND category = 'Boats';
             UPDATE player_vehicles SET garage = 'mtp' WHERE garage = 'oil';
             UPDATE player_vehicles SET garage = 'stonk' WHERE garage = 'cash-transfer';
             UPDATE player_vehicles SET garage = 'pound' WHERE state = 2 AND garage != 'pound';
 
-            UPDATE vehicles v SET v.stock = 14 - (SELECT COUNT(1) as taken FROM player_vehicles WHERE player_vehicles.vehicle = v.model AND player_vehicles.state != 5)  WHERE v.category = 'Compacts';
-            UPDATE vehicles v SET v.stock = 10 - (SELECT COUNT(1) as taken FROM player_vehicles WHERE player_vehicles.vehicle = v.model AND player_vehicles.state != 5)  WHERE v.category = 'Coupes';
-            UPDATE vehicles v SET v.stock = 6 - (SELECT COUNT(1) as taken FROM player_vehicles WHERE player_vehicles.vehicle = v.model AND player_vehicles.state != 5)  WHERE v.category = 'Muscle';
-            UPDATE vehicles v SET v.stock = 6 - (SELECT COUNT(1) as taken FROM player_vehicles WHERE player_vehicles.vehicle = v.model AND player_vehicles.state != 5)  WHERE v.category = 'Suvs';
-            UPDATE vehicles v SET v.stock = 10 - (SELECT COUNT(1) as taken FROM player_vehicles WHERE player_vehicles.vehicle = v.model AND player_vehicles.state != 5)  WHERE v.category = 'Vans';
-            UPDATE vehicles v SET v.stock = 10 - (SELECT COUNT(1) as taken FROM player_vehicles WHERE player_vehicles.vehicle = v.model AND player_vehicles.state != 5)  WHERE v.category = 'Off-road';
-            UPDATE vehicles v SET v.stock = 14 - (SELECT COUNT(1) as taken FROM player_vehicles WHERE player_vehicles.vehicle = v.model AND player_vehicles.state != 5)  WHERE v.category = 'Sedans';
-            UPDATE vehicles v SET v.stock = 10 - (SELECT COUNT(1) as taken FROM player_vehicles WHERE player_vehicles.vehicle = v.model AND player_vehicles.state != 5)  WHERE v.category = 'Motorcycles';
-            UPDATE vehicles v SET v.stock = 3 - (SELECT COUNT(1) as taken FROM player_vehicles WHERE player_vehicles.vehicle = v.model AND player_vehicles.state != 5)  WHERE v.category = 'Helicopters';
-            UPDATE vehicles v SET v.stock = 99 - (SELECT COUNT(1) as taken FROM player_vehicles WHERE player_vehicles.vehicle = v.model AND player_vehicles.state != 5)  WHERE v.category = 'Cycles';
-            UPDATE vehicles v SET v.stock = 100 - (SELECT COUNT(1) as taken FROM player_vehicles WHERE player_vehicles.vehicle = v.model AND player_vehicles.state != 5)  WHERE v.category = 'Electric';
-            UPDATE vehicles v SET v.stock = 2 - (SELECT COUNT(1) as taken FROM player_vehicles WHERE player_vehicles.vehicle = v.model AND player_vehicles.state != 5)  WHERE v.dealership_id = 'luxury';
+            UPDATE vehicles v SET v.stock = v.maxStock - (SELECT COUNT(1) FROM player_vehicles WHERE player_vehicles.vehicle = v.model AND player_vehicles.state != 5);
             UPDATE vehicles v SET v.stock = 0 WHERE v.stock < 0;
         `
             .split(';')
@@ -305,6 +297,26 @@ export class VehicleGarageProvider {
         this.blockedCrimiDate[citizenId] = date;
     }
 
+    private getPermissionForGarage(type: GarageType, category: GarageCategory): JobPermission {
+        if (type == GarageType.Depot) {
+            return JobPermission.SocietyTakeOutPound;
+        }
+        if (type == GarageType.Public) {
+            if (category == GarageCategory.Sea) {
+                return JobPermission.SocietyPublicPort;
+            } else {
+                return JobPermission.SocietyPublicGarage;
+            }
+        } else {
+            if (category == GarageCategory.Sea) {
+                return JobPermission.SocietyPrivatePort;
+            } else {
+                return JobPermission.SocietyPrivateGarage;
+            }
+        }
+        return null;
+    }
+
     @Rpc(RpcServerEvent.VEHICLE_GARAGE_GET_VEHICLES)
     public async getGarageVehicles(source: number, id: string): Promise<GarageVehicle[]> {
         const garage = (await this.garageRepository.get())[id];
@@ -368,10 +380,9 @@ export class VehicleGarageProvider {
         ) {
             const or = [{ citizenid: player.citizenid, job: null }] as Array<Prisma.PlayerVehicleWhereInput>;
 
-            if (
-                garage.type !== GarageType.Private &&
-                this.jobService.hasPermission(player, player.job.id, JobPermission.SocietyTakeOutPound)
-            ) {
+            const permission = this.getPermissionForGarage(garage.type, garage.category);
+
+            if (permission && this.jobService.hasPermission(player, player.job.id, permission)) {
                 or.push({ job: player.job.id });
             }
 
@@ -445,6 +456,7 @@ export class VehicleGarageProvider {
             playerVehiclesMapped.push({
                 vehicle: playerVehicle,
                 price,
+                weight: await this.inventoryManager.getVehicleStorageWeight(playerVehicle.plate),
                 name: vehiclesByModel[playerVehicle.modelName]?.name || null,
             } as GarageVehicle);
         }
@@ -472,9 +484,20 @@ export class VehicleGarageProvider {
             (garage.type === GarageType.Private ||
                 garage.type === GarageType.Public ||
                 garage.type === GarageType.House) &&
+            !vehicle.job &&
             !citizenIds.has(vehicle.citizenid)
         ) {
             return Err("ce véhicule n'est pas à vous");
+        } else if (
+            (garage.type === GarageType.Private || garage.type === GarageType.Public) &&
+            vehicle.job &&
+            !this.jobService.hasPermission(
+                player,
+                player.job.id,
+                this.getPermissionForGarage(garage.type, garage.category)
+            )
+        ) {
+            return Err("vous n'avez pas la permission de ranger un véhicule entreprise dans un garage publique/privé");
         } else if (garage.type === GarageType.Job && garage.job !== player.job.id) {
             return Err("vous n'avez pas accès à ce garage entreprise");
         } else if (
@@ -641,6 +664,23 @@ export class VehicleGarageProvider {
             } else {
                 this.notifier.notify(source, 'Le véhicule a été rangé dans le garage.', 'success');
             }
+        } else {
+            this.monitor.publish(
+                'vehicle_garage_error_in',
+                {
+                    player_source: source,
+                    vehicle_plate: vehicle.ok.plate,
+                },
+                {
+                    garage: id,
+                    garage_type: garage.type,
+                    position: toVector3Object(GetEntityCoords(GetPlayerPed(source)) as Vector3),
+                    state: state,
+                    delay: delay,
+                    pound_price: cost,
+                }
+            );
+            this.notifier.notify(source, '~r~ERREUR~s~ du rangement du véhicule.', 'error');
         }
     }
 
@@ -684,7 +724,10 @@ export class VehicleGarageProvider {
                 const citizenIds = await this.getCitizenIdsForGarage(player, garage, id);
 
                 if (!citizenIds.has(playerVehicle.citizenid)) {
-                    if (garage.type === GarageType.Private || garage.type === GarageType.House) {
+                    if (
+                        !playerVehicle.job &&
+                        (garage.type === GarageType.Private || garage.type === GarageType.House)
+                    ) {
                         this.notifier.notify(source, 'Ce véhicule ne vous appartient pas.', 'error');
 
                         return;
@@ -699,10 +742,14 @@ export class VehicleGarageProvider {
                         return;
                     }
 
+                    const permission = this.getPermissionForGarage(garage.type, garage.category);
+
                     if (
-                        (garage.type === GarageType.Depot || garage.type === GarageType.Public) &&
+                        (garage.type === GarageType.Private ||
+                            garage.type === GarageType.Public ||
+                            garage.type === GarageType.Depot) &&
                         (playerVehicle.job !== player.job.id ||
-                            !this.jobService.hasPermission(player, player.job.id, JobPermission.SocietyTakeOutPound))
+                            !this.jobService.hasPermission(player, player.job.id, permission))
                     ) {
                         this.notifier.notify(source, "Vous n'avez pas l'autorisation de sortir ce véhicule.", 'error');
 
@@ -724,7 +771,7 @@ export class VehicleGarageProvider {
                 }
 
                 const parkingPlaces = garage.parkingPlaces.filter(place => {
-                    const placeCapacities = place.data?.capacity || [PlaceCapacity.Small, PlaceCapacity.Medium];
+                    const placeCapacities = place.data?.capacity || [PlaceCapacity.Small];
 
                     return placeCapacities.includes(capacity);
                 });
@@ -861,48 +908,41 @@ export class VehicleGarageProvider {
         );
     }
 
-    private async getCitizenIdsForGarage(player: PlayerData, garage: Garage, propertyId: string): Promise<Set<string>> {
-        const citizenIds = new Set<string>();
+    @OnEvent(ServerEvent.VEHICLE_GARAGE_TRANSFER)
+    public async transferVehicleToGarage(source: number, id: number, from: Garage, to: Garage) {
+        if (!from.transferList || !from.transferList.includes(to.id)) {
+            this.notifier.notify(source, 'Vous ne pouvez pas transférer ce véhicule dans ce garage.', 'error');
 
-        if (garage.type === GarageType.House) {
-            const property = await this.prismaService.housing_property.findUnique({
-                where: {
-                    identifier: propertyId,
-                },
-            });
-
-            if (property) {
-                const appartements = await this.prismaService.housing_apartment.findMany({
-                    where: {
-                        AND: [
-                            { property_id: property.id },
-                            { OR: [{ owner: player.citizenid }, { roommate: player.citizenid }] },
-                        ],
-                    },
-                });
-
-                if (appartements.length == 0) {
-                    citizenIds.add(player.citizenid);
-                    this.logger.error('no appartements found for property', propertyId);
-                }
-
-                for (const appartement of appartements) {
-                    citizenIds.add(appartement.owner);
-
-                    if (appartement.roommate) {
-                        citizenIds.add(appartement.roommate);
-                    }
-                }
-            } else {
-                this.logger.error('property not found', propertyId);
-
-                citizenIds.add(player.citizenid);
-            }
-        } else {
-            citizenIds.add(player.citizenid);
+            return;
         }
 
-        return citizenIds;
+        const playerVehicle = await this.prismaService.playerVehicle.findFirst({
+            where: { id },
+        });
+
+        if (!playerVehicle || (playerVehicle.garage !== from.id && playerVehicle.garage !== from.legacyId)) {
+            this.notifier.notify(source, "Ce véhicule n'est pas disponible.", 'error');
+
+            return;
+        }
+
+        const weight = await this.inventoryManager.getVehicleStorageWeight(playerVehicle.plate);
+        const transferPrice = getTransferPrice(weight);
+
+        if (!this.playerMoneyService.remove(source, transferPrice)) {
+            this.notifier.notify(source, "Vous n'avez pas assez d'argent.", 'error');
+
+            return;
+        }
+
+        await this.prismaService.playerVehicle.update({
+            where: { id },
+            data: {
+                garage: to.id,
+            },
+        });
+
+        this.notifier.notify(source, `Vous avez transféré votre véhicule pour ${transferPrice}$.`, 'success');
     }
 
     @Tick(TickInterval.EVERY_MINUTE, 'soft-pound-check')
@@ -946,5 +986,49 @@ export class VehicleGarageProvider {
         }
 
         await wait(waitTime * 1000);
+    }
+
+    private async getCitizenIdsForGarage(player: PlayerData, garage: Garage, propertyId: string): Promise<Set<string>> {
+        const citizenIds = new Set<string>();
+
+        if (garage.type === GarageType.House) {
+            const property = await this.prismaService.housing_property.findUnique({
+                where: {
+                    identifier: propertyId,
+                },
+            });
+
+            if (property) {
+                const appartements = await this.prismaService.housing_apartment.findMany({
+                    where: {
+                        AND: [
+                            { property_id: property.id },
+                            { OR: [{ owner: player.citizenid }, { roommate: player.citizenid }] },
+                        ],
+                    },
+                });
+
+                if (appartements.length == 0) {
+                    citizenIds.add(player.citizenid);
+                    this.logger.error('no appartements found for property', propertyId);
+                }
+
+                for (const appartement of appartements) {
+                    citizenIds.add(appartement.owner);
+
+                    if (appartement.roommate) {
+                        citizenIds.add(appartement.roommate);
+                    }
+                }
+            } else {
+                this.logger.error('property not found', propertyId);
+
+                citizenIds.add(player.citizenid);
+            }
+        } else {
+            citizenIds.add(player.citizenid);
+        }
+
+        return citizenIds;
     }
 }

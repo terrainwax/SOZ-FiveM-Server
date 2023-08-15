@@ -1,11 +1,13 @@
+import { NuiJobEmployeeOnDuty } from '@public/shared/nui/job';
 import { PlayerPersonalMenuData } from '@public/shared/nui/player';
 
 import { AdminMenuStateProps } from '../../nui/components/Admin/AdminMenu';
 import { WardrobeMenuData } from '../cloth';
 import { DrivingSchoolMenuData } from '../driving-school';
 import { FuelType } from '../fuel';
-import { HousingUpgradesMenuData } from '../housing/menu';
+import { AdminMapperMenuData, HousingUpgradesMenuData } from '../housing/menu';
 import { MenuUpwData, UpwOrderMenuData } from '../job/upw';
+import { Race } from '../race';
 import { BossShopMenu, ShopProduct } from '../shop';
 import { GarageMenuData } from '../vehicle/garage';
 import { VehicleCustomMenuData } from '../vehicle/modification';
@@ -23,6 +25,7 @@ export interface NuiMenuMethodMap {
     Enter: never;
     SetMenuType: SetMenuType;
     ToggleFocus: never;
+    SetMenuVisibility: boolean;
 }
 
 export type SetMenuType = {
@@ -34,13 +37,18 @@ export type SetMenuType = {
 
 export enum MenuType {
     AdminMenu = 'AdminMenu',
+    AdminMapperMenu = 'AdminMapperMenu',
     BahamaUnicornJobMenu = 'baun_job',
     BennysOrderMenu = 'bennys_order',
     BennysUpgradeVehicle = 'bennys_upgrade_vehicle',
     Demo = 'demo',
     DrivingSchool = 'driving_school',
     BossShop = 'boss_shop',
-    MaskShop = 'mask_shop',
+    ClothShop = 'cloth_shop',
+    SuperetteShop = 'superette_shop',
+    TattooShop = 'tattoo_shop',
+    JewelryShop = 'jewelry_shop',
+    BarberShop = 'barber_shop',
     FightForStyleJobMenu = 'ffs_job',
     FoodJobMenu = 'food_job_menu',
     HousingUpgrades = 'housing_upgrades',
@@ -64,10 +72,19 @@ export enum MenuType {
     TaxiJobMenu = 'taxi_job',
     PlayerPersonal = 'player_personal',
     LsmcJobMenu = 'lsmc_job_menu',
+    JobOnDutyMenu = 'job_on_duty,',
+    Album = 'album',
+    DrugShop = 'drug_shop',
+    DrugGarden = 'drug_garden',
+    DrugAdmin = 'drug_admin',
+    RentBoat = 'rent_boat',
+    RaceAdmin = 'RaceAdmin',
+    RaceRank = 'RaceRank',
 }
 
 export interface MenuTypeMap extends Record<MenuType, any> {
     [MenuType.AdminMenu]: AdminMenuStateProps['data'];
+    [MenuType.AdminMapperMenu]: AdminMapperMenuData;
     [MenuType.BahamaUnicornJobMenu]: any;
     [MenuType.BennysUpgradeVehicle]: VehicleCustomMenuData;
     [MenuType.BennysOrderMenu]: any;
@@ -97,4 +114,11 @@ export interface MenuTypeMap extends Record<MenuType, any> {
     [MenuType.TaxiJobMenu]: any;
     [MenuType.PlayerPersonal]: PlayerPersonalMenuData;
     [MenuType.LsmcJobMenu]: any;
+    [MenuType.JobOnDutyMenu]: NuiJobEmployeeOnDuty;
+    [MenuType.Album]: { tracks: Record<string, string>; volume: number };
+    [MenuType.DrugShop]: ShopProduct[];
+    [MenuType.DrugAdmin]: never;
+    [MenuType.RentBoat]: any;
+    [MenuType.RaceAdmin]: Race[];
+    [MenuType.RaceRank]: { id: number; name: string };
 }

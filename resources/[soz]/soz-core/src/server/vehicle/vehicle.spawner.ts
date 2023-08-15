@@ -14,7 +14,7 @@ import { Ear } from '@public/shared/voip';
 
 import { ClientEvent, ServerEvent } from '../../shared/event';
 import { Vector3, Vector4 } from '../../shared/polyzone/vector';
-import { getDefaultVehicleConfiguration, VehicleConfiguration } from '../../shared/vehicle/modification';
+import { getDefaultVehicleConfiguration, VehicleColor, VehicleConfiguration } from '../../shared/vehicle/modification';
 import {
     getDefaultVehicleCondition,
     getDefaultVehicleVolatileState,
@@ -41,6 +41,7 @@ const VEHICLE_HAS_RADIO = [
     'mule6',
     'taco1',
     'dynasty2',
+    'tropic3',
     'trash',
     'stockade',
     'baller8',
@@ -76,6 +77,7 @@ const VEHICLE_HAS_RADIO = [
     'fbi2',
     'cogfbi',
     'paragonfbi',
+    'dodgebana',
     'sadler1',
     'hauler1',
     'brickade1',
@@ -85,9 +87,24 @@ const VEHICLE_HAS_RADIO = [
     'bcsoc7',
     'lspdgallardo',
     'bcsomanchez',
+    'predator',
+    'sasp1',
 ];
 
 const DISALLOWED_VEHICLE_MODELS = { [GetHashKey('dune2')]: true };
+
+//Prevent police bike to spawn inside custom BCSO mapping
+const frontBCSO = new BoxZone([1865.68, 3682.6, 33.57], 10.0, 6.4, {
+    heading: 300.0,
+    minZ: 32.57,
+    maxZ: 35.57,
+});
+
+const lsmcParking = new BoxZone([427.27, -1325.76, 39.02], 78.8, 111.0, {
+    heading: 140.16,
+    minZ: 29.02,
+    maxZ: 48.22,
+});
 
 @Provider()
 export class VehicleSpawner {
@@ -123,6 +140,9 @@ export class VehicleSpawner {
             noSpawnZones.push(BoxZone.default(dealership.showroom.position, 10, 10));
         }
 
+        noSpawnZones.push(frontBCSO);
+        noSpawnZones.push(lsmcParking);
+
         this.noSpawnZone = new MultiZone<BoxZone>(noSpawnZones);
     }
 
@@ -144,10 +164,14 @@ export class VehicleSpawner {
 
         if (DISALLOWED_VEHICLE_MODELS[model]) {
             CancelEvent();
+
+            return;
         }
 
         if (this.noSpawnZone.isPointInside(position)) {
             CancelEvent();
+
+            return;
         }
     }
 
@@ -283,12 +307,11 @@ export class VehicleSpawner {
         const modelHash = GetHashKey(model);
         const volatileState = {
             ...getDefaultVehicleVolatileState(),
-            isPlayerVehicle: true,
+            isPlayerVehicle: false,
             owner: player.citizenid,
             open: true,
         };
         const condition = getDefaultVehicleCondition();
-
         return this.spawn(
             source,
             {
@@ -296,6 +319,52 @@ export class VehicleSpawner {
                 model,
                 position,
                 warp: true,
+            },
+            volatileState,
+            condition
+        );
+    }
+
+    // eslint-disable-next-line @typescript-eslint/ban-types
+    public async spawnRentVehicle(
+        source: number,
+        model: string,
+        data: { position: Vector4; color: number }
+    ): Promise<null | number | object> {
+        const player = this.playerService.getPlayer(source);
+        const position = data.position;
+        const color = data.color;
+
+        if (!player) {
+            return null;
+        }
+
+        const modelHash = GetHashKey(model);
+        const volatileState = {
+            ...getDefaultVehicleVolatileState(),
+            isPlayerVehicle: false,
+            owner: player.citizenid,
+            open: false,
+            rentOwner: player.citizenid,
+        };
+        const condition = getDefaultVehicleCondition();
+        return this.spawn(
+            source,
+            {
+                hash: modelHash,
+                model,
+                position,
+                warp: false,
+                modification: {
+                    color: {
+                        primary: VehicleColor.MetallicWhite,
+                        secondary: color,
+                        pearlescent: null,
+                        rim: null,
+                    },
+                    modification: {},
+                    extra: {},
+                },
             },
             volatileState,
             condition

@@ -1,3 +1,5 @@
+import { JobPermission, JobType } from '@public/shared/job';
+
 import { Once, OnceStep, OnEvent, OnNuiEvent } from '../../../core/decorators/event';
 import { Inject } from '../../../core/decorators/injectable';
 import { Provider } from '../../../core/decorators/provider';
@@ -10,6 +12,7 @@ import { ItemService } from '../../item/item.service';
 import { NuiMenu } from '../../nui/nui.menu';
 import { PlayerService } from '../../player/player.service';
 import { TargetFactory } from '../../target/target.factory';
+import { JobService } from '../job.service';
 
 @Provider()
 export class FightForStyleProvider {
@@ -31,12 +34,15 @@ export class FightForStyleProvider {
     @Inject(TargetFactory)
     private targetFactory: TargetFactory;
 
+    @Inject(JobService)
+    private jobService: JobService;
+
     private state = {
         ffs_cotton_bale: false,
     };
 
     @Once(OnceStep.PlayerLoaded)
-    public onPlayerLoaded() {
+    public setupFfsJob() {
         this.createBlips();
 
         this.targetFactory.createForBoxZone(
@@ -57,7 +63,7 @@ export class FightForStyleProvider {
                     canInteract: () => {
                         return !this.playerService.isOnDuty();
                     },
-                    job: 'ffs',
+                    job: JobType.Ffs,
                 },
                 {
                     type: 'server',
@@ -67,7 +73,22 @@ export class FightForStyleProvider {
                     canInteract: () => {
                         return this.playerService.isOnDuty();
                     },
-                    job: 'ffs',
+                    job: JobType.Ffs,
+                },
+                {
+                    icon: 'fas fa-users',
+                    label: 'Employé(e)s en service',
+                    action: () => {
+                        TriggerServerEvent('QBCore:GetEmployOnDuty');
+                    },
+                    canInteract: () => {
+                        const player = this.playerService.getPlayer();
+                        return (
+                            this.playerService.isOnDuty() &&
+                            this.jobService.hasPermission(player.job.id, JobPermission.OnDutyView)
+                        );
+                    },
+                    job: JobType.Ffs,
                 },
             ]
         );

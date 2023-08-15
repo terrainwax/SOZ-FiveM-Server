@@ -178,6 +178,8 @@ function QBCore.Player.CheckPlayerData(source, PlayerData)
     PlayerData.metadata['criminal_talents'] = PlayerData.metadata['criminal_talents'] or {}
     PlayerData.metadata['criminal_state'] = PlayerData.metadata['criminal_state'] or 0
     PlayerData.metadata['criminal_reputation'] = PlayerData.metadata['criminal_reputation'] or 0
+    PlayerData.metadata['drugs_skills'] = PlayerData.metadata['drugs_skills'] or {}
+    PlayerData.metadata['drugs_heavy_contract_date'] = PlayerData.metadata['drugs_heavy_contract_date'] or 0
 
     PlayerData.metadata['injuries_count'] = PlayerData.metadata['injuries_count'] or 0
     PlayerData.metadata['injuries_date'] = PlayerData.metadata['injuries_date'] or 0
@@ -225,6 +227,10 @@ function QBCore.Player.CheckPlayerData(source, PlayerData)
     -- Features
     PlayerData.features = PlayerData.features or {}
     PlayerData.role = PlayerData.role or "user"
+
+    exports['soz-core']:SetPlayerState(PlayerData.source, {
+        isWearingPatientOutfit = false
+    })
 
     QBCore.Player.CreatePlayer(PlayerData)
 end
@@ -501,8 +507,7 @@ function QBCore.Player.CreatePlayer(PlayerData)
         if not skipApply then
             TriggerClientEvent("soz-character:Client:ApplyCurrentClothConfig", self.PlayerData.source)
             local playerState = exports['soz-core']:GetPlayerState(self.PlayerData.source)
-
-            if playerState.isWearingPatientOutfit then
+            if playerState ~= nil and playerState.isWearingPatientOutfit then
                 exports['soz-core']:SetPlayerState(self.PlayerData.source, {
                     isWearingPatientOutfit = false
                 })

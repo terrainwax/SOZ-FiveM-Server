@@ -15,27 +15,33 @@ import { societiesLogger } from './societies.utils';
 class _SocietyService {
     private readonly contactsDB: _SocietiesDB;
     private readonly qbCore: any;
+    private policeMessageCount: number;
 
     constructor() {
         this.contactsDB = SocietiesDb;
         societiesLogger.debug('Societies service started');
         this.qbCore = global.exports['qb-core'].GetCoreObject();
+        this.policeMessageCount = 0;
     }
 
     createMessageBroadcastEvent(player: number, messageId: number, sourcePhone: string, data: PreDBSociety): void {
         const qbCorePlayer = this.qbCore.Functions.GetPlayer(player);
 
-        emitNet(SocietyEvents.CREATE_MESSAGE_BROADCAST, player, {
+        const messageData = {
             id: messageId,
             conversation_id: data.number,
             source_phone: sourcePhone.includes('#') ? '' : sourcePhone,
             message: data.message,
+            htmlMessage: data.htmlMessage,
             position: data.pedPosition,
             isTaken: false,
             isDone: false,
             muted: !qbCorePlayer.PlayerData.job.onduty,
             createdAt: new Date().getTime(),
-        });
+            info: { ...data.info, notificationId: this.policeMessageCount, serviceNumber: data.number },
+        };
+
+        emitNet(SocietyEvents.CREATE_MESSAGE_BROADCAST, player, messageData);
     }
 
     replaceSocietyPhoneNumber(data: PreDBSociety, phoneSocietyNumber: string): PreDBSociety {
@@ -93,6 +99,10 @@ class _SocietyService {
             const contact = await this.contactsDB.addSociety(identifier, reqObj.data);
             resp({ status: 'ok', data: contact });
 
+            if (['555-LSPD', '555-BCSO', '555-POLICE'].includes(reqObj.data.number)) {
+                this.policeMessageCount++;
+            }
+
             const players = await PlayerService.getPlayersFromSocietyNumber(reqObj.data.number);
             players.forEach(player => {
                 this.createMessageBroadcastEvent(player.source, contact, identifier, reqObj.data);
@@ -119,6 +129,8 @@ class _SocietyService {
                     ),
                 };
 
+                this.policeMessageCount++;
+
                 [lspd, bcso]
                     .reduce((acc, val) => acc.concat(val), [])
                     .forEach(player => {
@@ -126,7 +138,10 @@ class _SocietyService {
                             player.source,
                             message[player.getSocietyPhoneNumber()],
                             identifier,
-                            this.addTagForSocietyMessage(reqObj.data, originalMessageNumber)
+                            this.replaceSocietyPhoneNumber(
+                                this.addTagForSocietyMessage(reqObj.data, originalMessageNumber),
+                                player.getSocietyPhoneNumber()
+                            )
                         );
                     });
             }
@@ -163,11 +178,12 @@ class _SocietyService {
                 [lspd, bcso, fbi]
                     .reduce((acc, val) => acc.concat(val), [])
                     .forEach(player => {
+                        const data = this.addTagForSocietyMessage(reqObj.data, originalMessageNumber);
                         this.createMessageBroadcastEvent(
                             player.source,
                             message[player.getSocietyPhoneNumber()],
                             identifier,
-                            this.addTagForSocietyMessage(reqObj.data, originalMessageNumber)
+                            data
                         );
                     });
             }

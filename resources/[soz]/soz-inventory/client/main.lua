@@ -29,6 +29,22 @@ RegisterNetEvent("inventory:client:requestOpenInventory", function(data)
     TriggerServerEvent("inventory:server:openInventory", data.invType, data.invID)
 end)
 
+function handleFish(inventory)
+    for _, value in ipairs(PlayerData.metadata.drugs_skills) do
+        -- 2 is Zoologiste
+        if value == 2 then
+            for key, value in pairs(inventory.items) do
+                if value.type == "fish" then
+                    value.useable = true
+                    value.usableLabel = "Ponctionner les toxines"
+                end
+            end
+        end
+    end
+
+    return inventory
+end
+
 function getAmountFromShortcutModifier(keyModifier, amount, maxAmount)
     local tempAmount = amount
 
@@ -78,7 +94,7 @@ RegisterNUICallback("transfertItem", function(data, cb)
     QBCore.Functions.TriggerCallback("inventory:server:TransfertItem", function(success, reason, invSource, invTarget)
         cb({status = success, sourceInventory = invSource, targetInventory = invTarget})
         if not success then
-            exports["soz-core"]:DrawNotification(Config.ErrorMessage[reason], "error")
+            exports["soz-core"]:DrawNotification(Config.ErrorMessage[reason] or reason, "error")
         elseif success and (invSource.type == "bin" or invTarget.type == "bin") then
             QBCore.Functions.RequestAnimDict("missfbi4prepp1")
             TaskPlayAnim(PlayerPedId(), "missfbi4prepp1", "_bag_pickup_garbage_man", 6.0, -6.0, 2500, 49, 0, 1, 1, 0)
@@ -114,9 +130,10 @@ RegisterNUICallback("sortItem", function(data, cb)
     end
 
     QBCore.Functions.TriggerCallback("inventory:server:TransfertItem", function(success, reason, invSource, invTarget)
+        invSource = handleFish(invSource)
         cb({status = success, sourceInventory = invSource, targetInventory = invTarget})
         if not success then
-            exports["soz-core"]:DrawNotification(Config.ErrorMessage[reason], "error")
+            exports["soz-core"]:DrawNotification(Config.ErrorMessage[reason] or reason, "error")
         end
     end, data.inventory, data.inventory, data.item.name, tonumber(amount) or 0, data.item.metadata, data.item.slot, data.slot, data.manualFilter)
 end)

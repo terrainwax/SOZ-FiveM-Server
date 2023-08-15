@@ -1,3 +1,5 @@
+import { VehicleClass } from '@public/shared/vehicle/vehicle';
+
 import { Command } from '../../core/decorators/command';
 import { OnNuiEvent } from '../../core/decorators/event';
 import { Inject } from '../../core/decorators/injectable';
@@ -158,6 +160,27 @@ export class VehicleMenuProvider {
         return true;
     }
 
+    @OnNuiEvent(NuiEvent.VehicleAnchorChange)
+    async handleAnchorChange(status: boolean) {
+        const ped = PlayerPedId();
+        const vehicle = GetVehiclePedIsIn(ped, false);
+
+        if (!vehicle) {
+            return false;
+        }
+
+        SetBoatAnchor(vehicle, status);
+        SetBoatFrozenWhenAnchored(vehicle, status);
+
+        if (status) {
+            this.notifier.notify("Vous avez ~g~baissé~s~ l'ancre.");
+        } else {
+            this.notifier.notify("Vous avez ~r~relevé~s~ l'ancre.");
+        }
+
+        return true;
+    }
+
     @Tick(TickInterval.EVERY_SECOND)
     public checkCloseMenu(): void {
         if (this.nuiMenu.getOpened() !== MenuType.Vehicle) {
@@ -225,6 +248,8 @@ export class VehicleMenuProvider {
             hasRadio: vehicleState.hasRadio,
             insideLSCustom: this.vehicleCustomProvider.isPedInsideCustomZone(),
             permission: isAllowed ? permission : null,
+            isAnchor: IsBoatAnchoredAndFrozen(vehicle),
+            isBoat: GetVehicleClass(vehicle) == VehicleClass.Boats,
         });
     }
 }

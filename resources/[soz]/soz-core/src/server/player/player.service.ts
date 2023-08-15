@@ -3,7 +3,8 @@ import { ServerStateService } from '@public/server/server.state.service';
 import { Inject, Injectable } from '../../core/decorators/injectable';
 import { Disease } from '../../shared/disease';
 import { ClientEvent } from '../../shared/event';
-import { PlayerData, PlayerMetadata } from '../../shared/player';
+import { PlayerCharInfo, PlayerData, PlayerMetadata } from '../../shared/player';
+import { PrismaService } from '../database/prisma.service';
 import { QBCore } from '../qbcore';
 
 @Injectable()
@@ -13,6 +14,11 @@ export class PlayerService {
 
     @Inject(ServerStateService)
     private serverStateService: ServerStateService;
+
+    @Inject(PrismaService)
+    private prismaService: PrismaService;
+
+    private names: Record<string, string> = {};
 
     public getPlayerByCitizenId(citizenId: string): PlayerData | null {
         const player = this.QBCore.getPlayerByCitizenId(citizenId);
@@ -167,5 +173,28 @@ export class PlayerService {
 
     public getSteamIdentifier(source: number): string {
         return this.QBCore.getSteamIdentifier(source);
+    }
+
+    public async getNameFromCitizenId(citizenId: string) {
+        if (!this.names[citizenId]) {
+            const dbInfo = await this.prismaService.player.findFirst({
+                where: {
+                    citizenid: citizenId,
+                },
+                select: {
+                    charinfo: true,
+                },
+            });
+
+            if (!dbInfo) {
+                return null;
+            }
+
+            const charInfo = JSON.parse(dbInfo.charinfo) as PlayerCharInfo;
+
+            this.names[citizenId] = charInfo.firstname + ' ' + charInfo.lastname;
+        }
+
+        return this.names[citizenId];
     }
 }

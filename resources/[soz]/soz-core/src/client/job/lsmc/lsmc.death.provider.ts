@@ -45,6 +45,8 @@ const deathVehcleAnim: Animation = {
         blendOutSpeed: 8.0,
         options: {
             repeat: true,
+            onlyUpperBody: true,
+            enablePlayerControl: true,
         },
     },
 };
@@ -211,6 +213,7 @@ export class LSMCDeathProvider {
                 killerentitytype: killerentitytype,
                 weaponhash: killerweapon,
                 weapondamagetype: GetWeaponDamageType(killerweapon),
+                weapongroup: GetWeapontypeGroup(killerweapon),
                 killpos: GetEntityCoords(player),
                 killerveh: killVehData,
                 ejection: Date.now() - this.vehicleSeatbeltProvider.getLastEjectTime() < 10000,
@@ -282,9 +285,9 @@ export class LSMCDeathProvider {
         const anim = IsPedInAnyVehicle(ped, true) ? deathVehcleAnim : deathAnim;
 
         if (!IsEntityPlayingAnim(ped, anim.base.dictionary, anim.base.name, 3)) {
-            this.animationService.playAnimation(anim, {
-                clearTasksBefore: true,
-            });
+            ClearPedTasks(ped);
+            ClearPedSecondaryTask(ped);
+            this.animationService.playAnimation(anim);
             await wait(500);
         }
     }
@@ -487,8 +490,9 @@ export class LSMCDeathProvider {
 
         if (
             playerData.metadata.hunger <= 0 ||
-            playerData.metadata['thirst'] <= 0 ||
-            playerData.metadata['alcohol'] >= 100
+            playerData.metadata.thirst <= 0 ||
+            playerData.metadata.alcohol >= 100 ||
+            playerData.metadata.drug >= 100
         ) {
             const ped = PlayerPedId();
 
@@ -504,7 +508,7 @@ export class LSMCDeathProvider {
                     },
                 });
 
-                this.hungerThristDeath = true;
+                this.hungerThristDeath = playerData.metadata.hunger <= 0 || playerData.metadata.thirst <= 0;
                 SetEntityHealth(ped, 0);
             }
         }
