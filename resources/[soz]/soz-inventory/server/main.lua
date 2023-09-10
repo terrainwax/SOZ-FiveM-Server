@@ -1,6 +1,24 @@
 QBCore = exports["qb-core"]:GetCoreObject()
 SozJobCore = exports["soz-jobs"]:GetCoreObject()
 
+function tprint (t, s)
+    for k, v in pairs(t) do
+        local kfmt = '["' .. tostring(k) ..'"]'
+        if type(k) ~= 'string' then
+            kfmt = '[' .. k .. ']'
+        end
+        local vfmt = '"'.. tostring(v) ..'"'
+        if type(v) == 'table' then
+            tprint(v, (s or '')..kfmt)
+        else
+            if type(v) ~= 'string' then
+                vfmt = tostring(v)
+            end
+            print(type(t)..(s or '')..kfmt..' = '..vfmt)
+        end
+    end
+end
+
 local Inventory = {}
 local Inventories = {}
 local SyncInventory = true
@@ -22,6 +40,21 @@ setmetatable(Inventory, {
 
 MySQL.ready(function()
     local StorageNotLoaded = table.clone(Config.Storages)
+
+    QBCore.Shared.Items["newtestitem"] = {
+        ['name'] = '900k_album',
+        ['label'] = "Album 900k",
+        ['weight'] = 200,
+        ['type'] = 'item',
+        ['unique'] = false,
+        ['useable'] = true,
+        ['shouldClose'] = true,
+        ['combinable'] = nil,
+        ['description'] = "Album musical du plus grand des artistes français.",
+        ['illustrator'] = '.Nariiel'
+    }
+
+    print(tprint(QBCore.Shared.Items))
 
     -- delete inventory of non players cars to avoid having an NPC car with same plate retrieving an existing inventory
     MySQL.query(

@@ -5,19 +5,19 @@ import { useSelector } from 'react-redux';
 
 export const AudioPlayer: React.FC = () => {
     const containerRef = useRef()
-    const sozCloud = useSelector((state: RootState) => state.appSozcloud);
+    const zpotify = useSelector((state: RootState) => state.appZpotify);
 
     useEffect(() => {
-        if (sozCloud.globalPlayerRef && sozCloud.soundPlayer)
+        if (zpotify.globalPlayerRef && zpotify.soundPlayer)
         {
-            sozCloud.soundPlayer.setOptions({container: sozCloud.globalPlayerRef})
+            zpotify.soundPlayer.setOptions({container: zpotify.globalPlayerRef})
             
         }
-        if (sozCloud.globalPlayerRef)
+        if (zpotify.globalPlayerRef)
             return
-        if (!sozCloud.soundPlayer)
-            store.dispatch.appSozcloud.initializeSelfPlayer({options: {}, containerRef})
-        store.dispatch.appSozcloud.set({globalPlayerRef: containerRef})
+        if (!zpotify.soundPlayer)
+            store.dispatch.appZpotify.initializeSelfPlayer({options: {}, containerRef})
+        store.dispatch.appZpotify.set({globalPlayerRef: containerRef})
         return
     }, [containerRef])
 

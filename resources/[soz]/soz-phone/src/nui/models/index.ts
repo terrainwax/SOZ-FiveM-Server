@@ -13,7 +13,7 @@ import { phone } from './phone';
 import { photo } from './photo';
 import { avatar } from './sim/avatar';
 import { simCard } from './simCard';
-import { appSozcloud } from './app/sozcloud';
+import { appZpotify } from './app/zpotify';
 import { appWeather } from './app/weather';
 
 export interface RootModel extends Models<RootModel> {
@@ -35,7 +35,7 @@ export interface RootModel extends Models<RootModel> {
     appInvoices: typeof appInvoices;
     appTwitchNews: typeof appTwitchNews;
     appSociety: typeof appSociety;
-    appSozcloud: typeof appSozcloud;
+    appZpotify: typeof appZpotify;
     appWeather: typeof appWeather;
 }
 
@@ -52,7 +52,7 @@ export const models: RootModel = {
     appInvoices,
     appTwitchNews,
     appSociety,
-    appSozcloud,
+    appZpotify,
     appWeather,
     emergency,
 };

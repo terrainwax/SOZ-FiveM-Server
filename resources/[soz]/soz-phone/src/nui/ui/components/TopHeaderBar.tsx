@@ -36,11 +36,15 @@ export const TopHeaderBar: FunctionComponent = memo(() => {
     }, [notifications, setBarUncollapsed]);
 
     const color = () => {
-        if (['/', '/emergency', '/weather', '/zpotify'].includes(pathname)) {
+        if (['/', '/emergency', '/weather'].includes(pathname)) {
             return 'text-white';
         } else if (pathname === '/call' || (call && pathname.includes('/phone'))) {
             return 'text-white';
-        } else if (pathname.includes('/camera')) {
+
+        } else if (pathname.includes('/zpotify')) {
+            return 'text-white';
+        }
+        else if (pathname.includes('/camera')) {
             return 'bg-black text-white';
         } else {
             return config.theme.value === 'dark' ? 'text-white' : 'text-black';
@@ -55,10 +59,10 @@ export const TopHeaderBar: FunctionComponent = memo(() => {
                 })}
                 onClick={
                     emergency
-                        ? () => {}
+                        ? () => { }
                         : () => {
-                              setBarUncollapsed(curr => !curr);
-                          }
+                            setBarUncollapsed(curr => !curr);
+                        }
                 }
             >
                 <div className="flex justify-center font-semibold text-center truncate">
@@ -109,8 +113,8 @@ export const TopHeaderBar: FunctionComponent = memo(() => {
                                     navigate('/call');
                                 }}
                                 notificationIcon={() => <DialerIcon className="h-5 w-5 rounded-md" />}
-                                onClose={() => {}}
-                                onClickClose={() => {}}
+                                onClose={() => { }}
+                                onClickClose={() => { }}
                             />
                         )}
                         {notifications.map((notification, idx) => (

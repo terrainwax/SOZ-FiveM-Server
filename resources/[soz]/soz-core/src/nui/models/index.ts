@@ -17,7 +17,6 @@ export interface RootModel extends Models<RootModel> {
     outside: typeof outside;
     vehicle: typeof vehicle;
     vehicleSpeed: typeof vehicleSpeed;
-    drugLocation: typeof drugLocation;
 }
 
 export const models: RootModel = {
@@ -29,5 +28,4 @@ export const models: RootModel = {
     outside,
     vehicle,
     vehicleSpeed,
-    drugLocation,
 };
