@@ -8,6 +8,7 @@ import { GameMasterSubMenu } from './GamemasterSubMenu';
 import { InteractiveSubMenu } from './InteractiveSubMenu';
 import { JobSubMenu } from './JobSubMenu';
 import { PlayerSubMenu } from './PlayerSubMenu';
+import { RecordAddSubMenu, RecordSubMenu } from './RecordSubMenu';
 import { SkinSubMenu } from './SkinSubMenu';
 import { VehicleSubMenu } from './VehicleSubMenu';
 
@@ -41,6 +42,7 @@ export const AdminMenu: FunctionComponent<AdminMenuStateProps> = ({ data }) => {
                     </MenuItemSubMenuLink>
                     <MenuItemSubMenuLink id="players">👨‍💻 Gestion des joueurs</MenuItemSubMenuLink>
                     <MenuItemSubMenuLink id="developer">🛠 Outils pour développeur</MenuItemSubMenuLink>
+                    <MenuItemSubMenuLink id="record">💿 Disquaires</MenuItemSubMenuLink>
                 </MenuContent>
             </MainMenu>
             <GameMasterSubMenu
@@ -55,6 +57,8 @@ export const AdminMenu: FunctionComponent<AdminMenuStateProps> = ({ data }) => {
             <VehicleSubMenu banner={data.banner} permission={data.permission} state={data.state.vehicule} />
             <PlayerSubMenu banner={data.banner} permission={data.permission} />
             <DeveloperSubMenu banner={data.banner} state={data.state.developer} />
+            <RecordSubMenu banner={data.banner} permission={data.permission} />
+            <RecordAddSubMenu banner={data.banner} permission={data.permission}/>
         </Menu>
     );
 };
