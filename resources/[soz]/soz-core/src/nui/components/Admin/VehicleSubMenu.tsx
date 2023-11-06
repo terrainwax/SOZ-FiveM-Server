@@ -56,6 +56,11 @@ export const VehicleSubMenu: FunctionComponent<VehicleSubMenuProps> = ({ banner,
     const onOpenBennysUpgrade = () => {
         fetchNui(NuiEvent.BennysUpgradeVehicle);
     };
+    const onOpenLSCustom = () => {
+        fetchNui(NuiEvent.VehicleOpenLSCustom, true);
+    };
+
+    const isStaffOrAdmin = ['staff', 'admin'].includes(permission);
 
     return (
         <>
@@ -71,6 +76,7 @@ export const VehicleSubMenu: FunctionComponent<VehicleSubMenuProps> = ({ banner,
                     </MenuItemButton>
                     <MenuItemSubMenuLink id={'vehicles_catalog'}>📝 Catalogue des véhicules</MenuItemSubMenuLink>
                     <MenuItemButton onConfirm={onOpenBennysUpgrade}>🔧 Améliorer le véhicule</MenuItemButton>
+                    <MenuItemButton onConfirm={() => onOpenLSCustom()}>🚀 LS Custom</MenuItemButton>
                     <MenuItemButton
                         onConfirm={async () => {
                             await fetchNui(NuiEvent.AdminMenuVehicleRepair);
@@ -111,6 +117,7 @@ export const VehicleSubMenu: FunctionComponent<VehicleSubMenuProps> = ({ banner,
                         </>
                     )}
                     <MenuItemCheckbox
+                        disabled={!isStaffOrAdmin}
                         checked={state.noStall}
                         onChange={async value => {
                             state.noStall = value;
@@ -120,6 +127,7 @@ export const VehicleSubMenu: FunctionComponent<VehicleSubMenuProps> = ({ banner,
                         ⛍ Calage désactivé
                     </MenuItemCheckbox>
                     <MenuItemButton
+                        disabled={!isStaffOrAdmin}
                         onConfirm={async () => {
                             await fetchNui(NuiEvent.AdminMenuVehicleDelete);
                         }}

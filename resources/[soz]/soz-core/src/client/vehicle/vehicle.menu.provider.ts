@@ -1,3 +1,4 @@
+import { FDO } from '@public/shared/job';
 import { VehicleClass } from '@public/shared/vehicle/vehicle';
 
 import { Command } from '../../core/decorators/command';
@@ -10,25 +11,25 @@ import { NuiEvent } from '../../shared/event';
 import { MenuType } from '../../shared/nui/menu';
 import { Err, Ok } from '../../shared/result';
 import { RpcServerEvent } from '../../shared/rpc';
+import { JobService } from '../job/job.service';
 import { Notifier } from '../notifier';
 import { InputService } from '../nui/input.service';
 import { NuiMenu } from '../nui/nui.menu';
 import { PlayerService } from '../player/player.service';
 import { VoipRadioVehicleProvider } from '../voip/voip.radio.vehicle.provider';
 import { VehicleCustomProvider } from './vehicle.custom.provider';
-import { VehicleService } from './vehicle.service';
 import { VehicleStateService } from './vehicle.state.service';
 
 @Provider()
 export class VehicleMenuProvider {
-    @Inject(VehicleService)
-    private vehicleService: VehicleService;
-
     @Inject(Notifier)
     private notifier: Notifier;
 
     @Inject(PlayerService)
     private playerService: PlayerService;
+
+    @Inject(JobService)
+    private jobService: JobService;
 
     @Inject(InputService)
     private inputService: InputService;
@@ -57,6 +58,34 @@ export class VehicleMenuProvider {
         SetVehicleEngineOn(vehicle, engineOn, false, true);
 
         return true;
+    }
+
+    @Command('vehiclelimitersetter', {
+        description: 'Activer / Désactiver le limiteur',
+        keys: [{ mapper: 'keyboard', key: 'slash' }],
+    })
+    async setSpeedLimit() {
+        const ped = PlayerPedId();
+        const vehicle = GetVehiclePedIsIn(ped, false);
+
+        if (!vehicle) {
+            return false;
+        }
+
+        const state = await this.vehicleStateService.getVehicleState(vehicle).then(data => {
+            return data;
+        });
+
+        const currentSpeed = GetEntitySpeed(vehicle) * 3.6;
+        const speedLimit = state.speedLimit ? null : Math.round(currentSpeed);
+
+        this.vehicleStateService.updateVehicleState(vehicle, { speedLimit }, false);
+
+        if (speedLimit == 0 || speedLimit == null) {
+            this.notifier.notify('Limiteur de vitesse ~r~désactivé~s~.');
+        } else {
+            this.notifier.notify(`Limiteur de vitesse ~g~activé~s~ à ${speedLimit} km/h.`);
+        }
     }
 
     @OnNuiEvent<null | number, boolean>(NuiEvent.VehicleSetSpeedLimit)
@@ -145,7 +174,7 @@ export class VehicleMenuProvider {
     }
 
     @OnNuiEvent(NuiEvent.VehicleOpenLSCustom)
-    async handleVehicleLSCustom() {
+    async handleVehicleLSCustom(admin?: boolean) {
         const ped = PlayerPedId();
         const vehicle = GetVehiclePedIsIn(ped, false);
 
@@ -155,7 +184,7 @@ export class VehicleMenuProvider {
 
         this.nuiMenu.closeMenu();
 
-        await this.vehicleCustomProvider.upgradeVehicle(vehicle);
+        await this.vehicleCustomProvider.upgradeVehicle(vehicle, admin);
 
         return true;
     }
@@ -179,6 +208,20 @@ export class VehicleMenuProvider {
         }
 
         return true;
+    }
+
+    @OnNuiEvent(NuiEvent.VehiclePoliceDisplay)
+    async handlePoliceDisplay(status: boolean) {
+        const ped = PlayerPedId();
+        const vehicle = GetVehiclePedIsIn(ped, false);
+
+        if (!vehicle) {
+            return false;
+        }
+
+        this.vehicleStateService.updateVehicleState(vehicle, {
+            policeLocatorEnabled: status,
+        });
     }
 
     @Tick(TickInterval.EVERY_SECOND)
@@ -207,6 +250,11 @@ export class VehicleMenuProvider {
         ],
     })
     async openMenu() {
+        const player = this.playerService.getPlayer();
+        if (!player) {
+            return;
+        }
+
         const ped = PlayerPedId();
         const vehicle = GetVehiclePedIsIn(ped, false);
 
@@ -250,6 +298,8 @@ export class VehicleMenuProvider {
             permission: isAllowed ? permission : null,
             isAnchor: IsBoatAnchoredAndFrozen(vehicle),
             isBoat: GetVehicleClass(vehicle) == VehicleClass.Boats,
+            police: FDO.includes(player.job.id) && FDO.includes(vehicleState.job),
+            policeLocator: vehicleState.policeLocatorEnabled,
         });
     }
 }

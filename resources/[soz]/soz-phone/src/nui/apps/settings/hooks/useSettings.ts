@@ -23,6 +23,7 @@ export interface IPhoneSettings {
     societyNotification: SettingOption;
     societyNotificationVol: number;
     handsFree: boolean;
+    planeMode: boolean;
     dynamicAlert: boolean;
     dynamicAlertVol: number;
     dynamicAlertDuration: SettingOption;

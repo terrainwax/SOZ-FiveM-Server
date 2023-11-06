@@ -1,11 +1,12 @@
-import { Once, OnceStep, OnNuiEvent } from '../../core/decorators/event';
+import { LS_CUSTOM_ZONE } from '@public/config/ls_custom';
+
+import { OnEvent, OnNuiEvent } from '../../core/decorators/event';
 import { Inject } from '../../core/decorators/injectable';
 import { Provider } from '../../core/decorators/provider';
 import { emitRpc } from '../../core/rpc';
-import { NuiEvent } from '../../shared/event';
+import { wait } from '../../core/utils';
+import { ClientEvent, NuiEvent } from '../../shared/event';
 import { MenuType } from '../../shared/nui/menu';
-import { BoxZone } from '../../shared/polyzone/box.zone';
-import { MultiZone } from '../../shared/polyzone/multi.zone';
 import { Vector3 } from '../../shared/polyzone/vector';
 import { RpcServerEvent } from '../../shared/rpc';
 import {
@@ -15,26 +16,15 @@ import {
     VehicleCustomMenuData,
     VehicleUpgradeOptions,
 } from '../../shared/vehicle/modification';
-import { BlipFactory } from '../blip';
+import { VehicleSeat } from '../../shared/vehicle/vehicle';
 import { Notifier } from '../notifier';
 import { NuiMenu } from '../nui/nui.menu';
-import { PlayerService } from '../player/player.service';
-import { VehicleRepository } from '../resources/vehicle.repository';
-import { TargetFactory } from '../target/target.factory';
+import { VehicleRepository } from '../repository/vehicle.repository';
 import { VehicleModificationService } from './vehicle.modification.service';
 import { VehicleService } from './vehicle.service';
 
 @Provider()
 export class VehicleCustomProvider {
-    @Inject(PlayerService)
-    private playerService: PlayerService;
-
-    @Inject(TargetFactory)
-    private targetFactory: TargetFactory;
-
-    @Inject(BlipFactory)
-    private blipFactory: BlipFactory;
-
     @Inject(VehicleRepository)
     private vehicleRepository: VehicleRepository;
 
@@ -50,67 +40,10 @@ export class VehicleCustomProvider {
     @Inject(VehicleModificationService)
     private vehicleModificationService: VehicleModificationService;
 
-    private lsCustomZone = new MultiZone([
-        new BoxZone([-339.46, -136.73, 39.01], 10, 10, {
-            heading: 70,
-            minZ: 38.01,
-            maxZ: 42.01,
-        }),
-        new BoxZone([-1154.88, -2005.4, 13.18], 10, 10, {
-            heading: 45,
-            minZ: 12.18,
-            maxZ: 16.18,
-        }),
-        new BoxZone([731.87, -1087.88, 22.17], 10, 10, {
-            heading: 0,
-            minZ: 21.17,
-            maxZ: 25.17,
-        }),
-        new BoxZone([110.98, 6627.06, 31.89], 10, 10, {
-            heading: 45,
-            minZ: 30.89,
-            maxZ: 34.89,
-        }),
-        new BoxZone([1175.88, 2640.3, 37.79], 10, 10, {
-            heading: 45,
-            minZ: 36.79,
-            maxZ: 40.79,
-        }),
-        new BoxZone([99.01, 6633.45, 31.5], 19.0, 7.2, {
-            heading: 315.0,
-            minZ: 28.5,
-            maxZ: 34.502,
-        }),
-        /* Cayo when custom on boats are OK
-        new BoxZone([5126.11, -4649.94, 0.62], 71.0, 29.2, {
-            heading: 255.65,
-            minZ: -0.38,
-            maxZ: 1.62,
-        }),*/
-    ]);
-
-    @Once(OnceStep.PlayerLoaded)
-    setupVehicleCustomZone(): void {
-        for (const zoneIndex in this.lsCustomZone.zones) {
-            const zone = this.lsCustomZone.zones[zoneIndex];
-
-            this.blipFactory.create(`ls_custom_${zoneIndex}`, {
-                sprite: 72,
-                color: 46,
-                coords: {
-                    x: zone.center[0],
-                    y: zone.center[1],
-                    z: zone.center[2],
-                },
-                name: 'LS Custom',
-            });
-        }
-    }
-
     public isPedInsideCustomZone(): boolean {
         const position = GetEntityCoords(PlayerPedId(), true) as Vector3;
 
-        return this.lsCustomZone.isPointInside(position);
+        return LS_CUSTOM_ZONE.isPointInside(position);
     }
 
     @OnNuiEvent<{ menuType: MenuType; menuData: VehicleCustomMenuData }>(NuiEvent.MenuClosed)
@@ -124,10 +57,14 @@ export class VehicleCustomProvider {
             SetVehicleLights(menuData.vehicle, 0);
 
             if (menuData.originalConfiguration) {
-                this.vehicleModificationService.applyVehicleConfiguration(
-                    menuData.vehicle,
-                    menuData.originalConfiguration
-                );
+                if (menuType === MenuType.VehicleCustom) {
+                    this.vehicleService.applyVehicleConfigurationPerformance(
+                        menuData.vehicle,
+                        menuData.originalConfiguration
+                    );
+                } else {
+                    this.vehicleService.applyVehicleConfiguration(menuData.vehicle, menuData.originalConfiguration);
+                }
             }
         }
     }
@@ -141,13 +78,19 @@ export class VehicleCustomProvider {
         vehicleEntityId,
         vehicleConfiguration,
         originalConfiguration,
+        onlyPerformance,
     }): Promise<VehicleUpgradeOptions> {
         if (!vehicleEntityId || !vehicleConfiguration) {
             return null;
         }
 
         const diff = getVehicleConfigurationDiff(originalConfiguration, vehicleConfiguration);
-        this.vehicleModificationService.applyVehicleConfiguration(vehicleEntityId, diff);
+
+        if (onlyPerformance) {
+            this.vehicleService.applyVehicleConfigurationPerformance(vehicleEntityId, diff);
+        } else {
+            this.vehicleService.applyVehicleConfiguration(vehicleEntityId, diff);
+        }
 
         return this.vehicleModificationService.createOptions(vehicleEntityId);
     }
@@ -160,6 +103,7 @@ export class VehicleCustomProvider {
         vehicleConfiguration,
         originalConfiguration,
         usePricing,
+        onlyPerformance,
     }): Promise<void> {
         const options = this.vehicleModificationService.createOptions(vehicleEntityId);
         const vehicle = this.vehicleRepository.getByModelHash(GetEntityModel(vehicleEntityId));
@@ -174,7 +118,12 @@ export class VehicleCustomProvider {
             SetVehicleUndriveable(vehicleEntityId, false);
             SetVehicleLights(vehicleEntityId, 0);
 
-            this.vehicleService.applyVehicleConfiguration(vehicleEntityId, originalConfiguration);
+            if (onlyPerformance) {
+                this.vehicleService.applyVehicleConfigurationPerformance(vehicleEntityId, originalConfiguration);
+            } else {
+                this.vehicleService.applyVehicleConfiguration(vehicleEntityId, originalConfiguration);
+            }
+
             this.nuiMenu.closeMenu();
 
             return;
@@ -195,11 +144,16 @@ export class VehicleCustomProvider {
         SetVehicleUndriveable(vehicleEntityId, false);
         SetVehicleLights(vehicleEntityId, 0);
 
-        this.vehicleService.applyVehicleConfiguration(vehicleEntityId, newVehicleConfiguration);
+        if (onlyPerformance) {
+            this.vehicleService.applyVehicleConfigurationPerformance(vehicleEntityId, newVehicleConfiguration);
+        } else {
+            this.vehicleService.applyVehicleConfiguration(vehicleEntityId, newVehicleConfiguration);
+        }
+
         this.nuiMenu.closeMenu();
     }
 
-    public async upgradeVehicle(vehicleEntityId: number) {
+    public async upgradeVehicle(vehicleEntityId: number, admin: boolean) {
         const options = this.vehicleModificationService.createOptions(vehicleEntityId);
         const vehicle = this.vehicleRepository.getByModelHash(GetEntityModel(vehicleEntityId));
 
@@ -222,6 +176,33 @@ export class VehicleCustomProvider {
             options,
             originalConfiguration: { ...vehicleConfiguration },
             currentConfiguration: vehicleConfiguration,
+            admin: admin,
         });
+    }
+
+    @OnEvent(ClientEvent.BASE_ENTERED_VEHICLE)
+    @OnEvent(ClientEvent.BASE_CHANGE_VEHICLE_SEAT)
+    public async onVehicleEnterSyncModification(vehicleEntityId: number, seat: number) {
+        if (seat !== VehicleSeat.Driver) {
+            return;
+        }
+
+        let i = 0;
+
+        while (!NetworkHasControlOfEntity(vehicleEntityId) && i < 20) {
+            await wait(500);
+            i++;
+        }
+
+        if (!NetworkHasControlOfEntity(vehicleEntityId)) {
+            return;
+        }
+
+        const configuration = await this.vehicleService.getVehicleConfiguration(vehicleEntityId);
+        this.vehicleService.applyVehicleConfigurationPerformance(vehicleEntityId, configuration);
+
+        if (GetVehicleHasKers(vehicleEntityId)) {
+            SetVehicleKersAllowed(vehicleEntityId, false);
+        }
     }
 }

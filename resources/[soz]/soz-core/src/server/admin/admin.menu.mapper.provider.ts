@@ -1,60 +1,45 @@
+import { Command } from '@public/core/decorators/command';
+
 import { Inject } from '../../core/decorators/injectable';
 import { Provider } from '../../core/decorators/provider';
 import { Rpc } from '../../core/decorators/rpc';
 import { Property } from '../../shared/housing/housing';
-import { Zone, zoneToLegacyData } from '../../shared/polyzone/box.zone';
+import { Zone, ZoneTyped } from '../../shared/polyzone/box.zone';
 import { RpcServerEvent } from '../../shared/rpc';
-import { PrismaService } from '../database/prisma.service';
-import { RepositoryProvider } from '../repository/repository.provider';
+import { PlayerService } from '../player/player.service';
+import { HousingRepository } from '../repository/housing.repository';
+import { ZoneRepository } from '../repository/zone.repository';
 
 @Provider()
 export class AdminMenuMapperProvider {
-    @Inject(PrismaService)
-    private prismaService: PrismaService;
+    @Inject(HousingRepository)
+    private housingRepository: HousingRepository;
 
-    @Inject(RepositoryProvider)
-    private repositoryProvider: RepositoryProvider;
+    @Inject(ZoneRepository)
+    private zoneRepository: ZoneRepository;
+
+    @Inject(PlayerService)
+    private playerService: PlayerService;
 
     @Rpc(RpcServerEvent.ADMIN_MAPPER_SET_APARTMENT_PRICE)
     public async setApartmentPrice(source: number, apartmentId: number, price: number): Promise<Property[]> {
-        await this.prismaService.housing_apartment.update({
-            where: {
-                id: apartmentId,
-            },
-            data: {
-                price,
-            },
-        });
+        await this.housingRepository.setApartmentPrice(apartmentId, price);
 
-        return await this.repositoryProvider.refresh('housing');
+        return await this.housingRepository.get();
     }
 
     @Rpc(RpcServerEvent.ADMIN_MAPPER_SET_APARTMENT_NAME)
     public async setApartmentName(source: number, apartmentId: number, name: string): Promise<Property[]> {
-        await this.prismaService.housing_apartment.update({
-            where: {
-                id: apartmentId,
-            },
-            data: {
-                label: name,
-            },
-        });
+        await this.housingRepository.setApartmentName(apartmentId, name);
 
-        return await this.repositoryProvider.refresh('housing');
+        return await this.housingRepository.get();
     }
 
     @Rpc(RpcServerEvent.ADMIN_MAPPER_SET_APARTMENT_IDENTIFIER)
     public async setApartmentIdentifier(source: number, apartmentId: number, identifier: string): Promise<Property[]> {
-        await this.prismaService.housing_apartment.update({
-            where: {
-                id: apartmentId,
-            },
-            data: {
-                identifier,
-            },
-        });
+        await this.housingRepository.setApartmentIdentifier(apartmentId, identifier);
 
-        return await this.repositoryProvider.refresh('housing');
+        return await this.housingRepository.get();
     }
 
     @Rpc(RpcServerEvent.ADMIN_MAPPER_UPDATE_APARTMENT_ZONE)
@@ -64,34 +49,9 @@ export class AdminMenuMapperProvider {
         zone: Zone,
         type: 'inside' | 'exit' | 'fridge' | 'stash' | 'closet' | 'money'
     ): Promise<Property[]> {
-        if (type === 'inside') {
-            await this.prismaService.housing_apartment.update({
-                where: {
-                    id: apartmentId,
-                },
-                data: {
-                    inside_coord: JSON.stringify({
-                        x: zone.center[0],
-                        y: zone.center[1],
-                        z: zone.center[2],
-                        w: zone.heading,
-                    }),
-                },
-            });
-        } else {
-            const zoneData = JSON.stringify(zoneToLegacyData(zone));
+        await this.housingRepository.updateApartmentZone(apartmentId, zone, type);
 
-            await this.prismaService.housing_apartment.update({
-                where: {
-                    id: apartmentId,
-                },
-                data: {
-                    [`${type}_zone`]: zoneData,
-                },
-            });
-        }
-
-        return await this.repositoryProvider.refresh('housing');
+        return await this.housingRepository.get();
     }
 
     @Rpc(RpcServerEvent.ADMIN_MAPPER_UPDATE_PROPERTY_ZONE)
@@ -101,40 +61,23 @@ export class AdminMenuMapperProvider {
         zone: Zone,
         type: 'entry' | 'garage'
     ): Promise<Property[]> {
-        const zoneData = JSON.stringify(zoneToLegacyData(zone));
+        await this.housingRepository.updatePropertyZone(propertyId, zone, type);
 
-        await this.prismaService.housing_property.update({
-            where: {
-                id: propertyId,
-            },
-            data: {
-                [`${type}_zone`]: zoneData,
-            },
-        });
-
-        return await this.repositoryProvider.refresh('housing');
+        return await this.housingRepository.get();
     }
 
     @Rpc(RpcServerEvent.ADMIN_MAPPER_ADD_PROPERTY)
     public async addProperty(source: number, name: string): Promise<Property[]> {
-        await this.prismaService.housing_property.create({
-            data: {
-                identifier: name,
-            },
-        });
+        await this.housingRepository.addProperty(name);
 
-        return await this.repositoryProvider.refresh('housing');
+        return await this.housingRepository.get();
     }
 
     @Rpc(RpcServerEvent.ADMIN_MAPPER_REMOVE_PROPERTY)
     public async removeProperty(source: number, id: number): Promise<Property[]> {
-        await this.prismaService.housing_property.delete({
-            where: {
-                id: id,
-            },
-        });
+        await this.housingRepository.removeProperty(id);
 
-        return await this.repositoryProvider.refresh('housing');
+        return await this.housingRepository.get();
     }
 
     @Rpc(RpcServerEvent.ADMIN_MAPPER_ADD_APARTMENT)
@@ -144,25 +87,53 @@ export class AdminMenuMapperProvider {
         identifier: string,
         label: string
     ): Promise<Property[]> {
-        await this.prismaService.housing_apartment.create({
-            data: {
-                property_id: propertyId,
-                identifier,
-                label,
-            },
-        });
+        await this.housingRepository.addApartment(propertyId, identifier, label);
 
-        return await this.repositoryProvider.refresh('housing');
+        return await this.housingRepository.get();
     }
 
     @Rpc(RpcServerEvent.ADMIN_MAPPER_REMOVE_APARTMENT)
     public async removeApartment(source: number, id: number): Promise<Property[]> {
-        await this.prismaService.housing_apartment.delete({
-            where: {
-                id: id,
-            },
-        });
+        await this.housingRepository.removeApartment(id);
 
-        return await this.repositoryProvider.refresh('housing');
+        return this.housingRepository.get();
+    }
+
+    @Rpc(RpcServerEvent.ADMIN_MAPPER_ADD_PROPERTY_CULLING)
+    public async addPropertyCulling(source: number, id: number, culling: number): Promise<Property[]> {
+        await this.housingRepository.addPropertyExteriorCulling(id, culling);
+
+        return this.housingRepository.get();
+    }
+
+    @Rpc(RpcServerEvent.ADMIN_MAPPER_REMOVE_PROPERTY_CULLING)
+    public async removePropertyCulling(source: number, id: number, culling: number): Promise<Property[]> {
+        await this.housingRepository.removePropertyExteriorCulling(id, culling);
+
+        return this.housingRepository.get();
+    }
+
+    @Rpc(RpcServerEvent.ADMIN_MAPPER_ADD_ZONE)
+    public async addZone(source: number, zone: Zone): Promise<ZoneTyped[]> {
+        await this.zoneRepository.addZone(zone);
+
+        return this.zoneRepository.get();
+    }
+
+    @Rpc(RpcServerEvent.ADMIN_MAPPER_REMOVE_ZONE)
+    public async removeZone(source: number, id: number): Promise<ZoneTyped[]> {
+        await this.zoneRepository.removeZone(id);
+
+        return this.zoneRepository.get();
+    }
+
+    @Command('housekey', { role: ['staff', 'admin'], description: '/housekey propertyname apartmentname' })
+    public housekey(source: number, propertyname: string, apartmentname: string) {
+        const player = this.playerService.getPlayer(source);
+        if (!player) {
+            return;
+        }
+
+        TriggerEvent('housing:server:GiveAdminAccess', player.source, propertyname, apartmentname, player.citizenid);
     }
 }

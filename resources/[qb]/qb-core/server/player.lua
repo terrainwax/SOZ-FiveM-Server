@@ -37,7 +37,7 @@ function QBCore.Player.Login(source, citizenid, newData)
                 if apartment then
                     PlayerData.address = apartment.label
                     PlayerData.apartment = apartment
-                    PlayerData.apartment.price = QBCore.Shared.Round(apartment.price * 4 / 5)
+                    PlayerData.apartment.price = apartment.price
                 else
                     PlayerData.apartment = nil
                 end
@@ -101,7 +101,8 @@ function QBCore.Player.CheckPlayerData(source, PlayerData)
     end
     PlayerData.metadata['hunger'] = PlayerData.metadata['hunger'] or 100
     PlayerData.metadata['thirst'] = PlayerData.metadata['thirst'] or 100
-    PlayerData.metadata['alcohol'] = PlayerData.metadata['alcohol'] or 0
+    --NaN check
+    PlayerData.metadata['alcohol'] = PlayerData.metadata['alcohol'] == PlayerData.metadata['alcohol'] and PlayerData.metadata['alcohol'] or 0
     PlayerData.metadata['fiber'] = PlayerData.metadata['fiber'] or 70
     PlayerData.metadata['lipid'] = PlayerData.metadata['lipid'] or 70
     PlayerData.metadata['sugar'] = PlayerData.metadata['sugar'] or 70
@@ -227,10 +228,6 @@ function QBCore.Player.CheckPlayerData(source, PlayerData)
     -- Features
     PlayerData.features = PlayerData.features or {}
     PlayerData.role = PlayerData.role or "user"
-
-    exports['soz-core']:SetPlayerState(PlayerData.source, {
-        isWearingPatientOutfit = false
-    })
 
     QBCore.Player.CreatePlayer(PlayerData)
 end
@@ -506,12 +503,6 @@ function QBCore.Player.CreatePlayer(PlayerData)
 
         if not skipApply then
             TriggerClientEvent("soz-character:Client:ApplyCurrentClothConfig", self.PlayerData.source)
-            local playerState = exports['soz-core']:GetPlayerState(self.PlayerData.source)
-            if playerState ~= nil and playerState.isWearingPatientOutfit then
-                exports['soz-core']:SetPlayerState(self.PlayerData.source, {
-                    isWearingPatientOutfit = false
-                })
-            end
         end
 
         exports['soz-core']:Log('DEBUG', 'Update player cloth config ' .. json.encode(config), { player = self.PlayerData })

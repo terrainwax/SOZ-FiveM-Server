@@ -20,7 +20,10 @@ import { useNuiEvent } from '../hook/nui';
 import { store } from '../store';
 import { AudioApp } from './Audio/AudioApp';
 import { RepairApp } from './Bennys/RepairApp';
+import { BookApp } from './Book/BookApp';
 import { CardApp } from './Card/CardApp';
+import { CraftApp } from './Craft/CraftApp';
+import { FieldHealthApp } from './Field/FieldHealthApp';
 import { HudApp } from './Hud/HudApp';
 import { InputApp } from './Input/InputApp';
 import { MenuApp } from './Menu/MenuApp';
@@ -92,6 +95,9 @@ export const App: FunctionComponent = () => {
                 <DrugSkillApp />
                 <DrugTransformApp />
                 <RaceApp />
+                <BookApp />
+                <FieldHealthApp />
+                <CraftApp />
                 <InputApp />
             </div>
         </Provider>

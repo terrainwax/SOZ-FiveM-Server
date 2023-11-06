@@ -1,4 +1,5 @@
-import { Context } from '../../core/context';
+import { On } from '@public/core/decorators/event';
+
 import { Command } from '../../core/decorators/command';
 import { Exportable } from '../../core/decorators/exports';
 import { Inject } from '../../core/decorators/injectable';
@@ -13,11 +14,12 @@ import { getRandomInt, getRandomKeyWeighted } from '../../shared/random';
 import { Forecast, ForecastWithTemperature, TemperatureRange, Time, Weather } from '../../shared/weather';
 import { Pollution } from '../pollution';
 import { Store } from '../store/store';
-import { Polluted, Summer } from './forecast';
-import { DaySummerTemperature, ForecastAdderTemperatures, NightSummerTemperature } from './temperature';
+import { Polluted, SpringAutumn } from './forecast';
+import { DayAutumnTemperature, ForecastAdderTemperatures, NightAutumnTemperature } from './temperature';
 
 const INCREMENT_SECOND = (3600 * 24) / (60 * 48);
 const MAX_FORECASTS = 5;
+const UPDATE_TIME_INTERVAL = 5;
 
 @Provider()
 export class WeatherProvider {
@@ -33,28 +35,30 @@ export class WeatherProvider {
     private currentTime: Time = { hour: 2, minute: 0, second: 0 };
 
     private shouldUpdateWeather = true;
+    private pollutionManagerReady = false;
 
     // See forecast.ts for the list of available forecasts
-    private forecast: Forecast = Summer;
+    private forecast: Forecast = SpringAutumn;
     // See temperature.ts for the list of available temperature ranges,
     // please ensure that the day and night temperature ranges are using the same season
-    private dayTemperatureRange: TemperatureRange = DaySummerTemperature;
-    private nightTemperatureRange: TemperatureRange = NightSummerTemperature;
+    private dayTemperatureRange: TemperatureRange = DayAutumnTemperature;
+    private nightTemperatureRange: TemperatureRange = NightAutumnTemperature;
 
-    private defaultWeather: Weather = 'CLEAR';
-    private incomingForecasts: ForecastWithTemperature[] = [
-        {
-            weather: this.defaultWeather,
-            temperature: this.getTemperature(this.defaultWeather, this.currentTime),
-            duration: 1000 * 10,
-        },
-    ];
+    private defaultWeather: Weather = isFeatureEnabled(Feature.Halloween) ? 'NEUTRAL' : 'OVERCAST';
+
+    private currentForecast: ForecastWithTemperature = {
+        weather: this.defaultWeather,
+        temperature: this.getTemperature(this.defaultWeather, this.currentTime),
+        duration: 1000 * 10,
+    };
+
+    private incomingForecasts: ForecastWithTemperature[] = [this.currentForecast];
 
     private stormDeadline = 0; // timestamp
 
-    @Tick(TickInterval.EVERY_SECOND, 'weather:time:advance', true)
-    async advanceTime(context: Context) {
-        this.currentTime.second += INCREMENT_SECOND;
+    @Tick(TickInterval.EVERY_SECOND * UPDATE_TIME_INTERVAL, 'weather:time:advance', true)
+    async advanceTime() {
+        this.currentTime.second += INCREMENT_SECOND * UPDATE_TIME_INTERVAL;
 
         if (this.currentTime.second >= 60) {
             const incrementMinutes = Math.floor(this.currentTime.second / 60);
@@ -74,8 +78,6 @@ export class WeatherProvider {
             }
         }
 
-        await context.wait(100);
-
         if (isFeatureEnabled(Feature.Halloween)) {
             if (this.currentTime.hour >= 2 && this.currentTime.hour < 23) {
                 this.currentTime.hour = 23;
@@ -83,8 +85,6 @@ export class WeatherProvider {
                 this.currentTime.second = 0;
             }
         }
-
-        await context.wait(100);
 
         TriggerClientEvent(ClientEvent.STATE_UPDATE_TIME, -1, this.currentTime);
     }
@@ -94,28 +94,19 @@ export class WeatherProvider {
         if (!this.shouldUpdateWeather) {
             return;
         }
-
-        let weather = this.incomingForecasts.shift();
-        if (!weather) {
-            // This happens when the getTemperature crashes because the PollutionManager is not ready yet.
-            // Ideally, you should migrate soz-upw to soz-core and then try to remove this block and see if it works.
-            // Just check the logs of the server, if it loops indefinitely, then you need to keep this block.
-            weather = {
-                weather: this.defaultWeather,
-                temperature: this.getTemperature(this.defaultWeather, this.currentTime),
-                duration: 1000 * 10,
-            };
+        if (!this.pollutionManagerReady) {
+            return;
         }
+
+        const weather = this.incomingForecasts.shift();
+        this.currentForecast = weather;
         this.store.dispatch.global.update({ weather: weather.weather });
         this.prepareForecasts(weather.weather);
 
-        const defaultWeather = isFeatureEnabled(Feature.Halloween) ? 'NEUTRAL' : 'OVERCAST';
-        const currentWeather = this.store.getState().global.weather || defaultWeather;
-
-        this.store.dispatch.global.update({ weather: this.getNextWeather(currentWeather) });
         TriggerClientEvent(ClientEvent.PHONE_APP_WEATHER_UPDATE_FORECASTS, -1);
 
-        await wait(weather.duration || (Math.random() * 5 + 10) * 60 * 1000);
+        const duration = weather.duration || (Math.random() * 5 + 10) * 60 * 1000;
+        await wait(duration);
     }
 
     @Exportable('setWeatherUpdate')
@@ -195,7 +186,7 @@ export class WeatherProvider {
 
     @Exportable('getWeatherForecasts')
     getWeatherForecasts(): ForecastWithTemperature[] {
-        return this.incomingForecasts;
+        return [this.currentForecast, ...this.incomingForecasts];
     }
 
     @Exportable('getStormAlert')
@@ -283,7 +274,6 @@ export class WeatherProvider {
 
             transitions = {};
         }
-
         return getRandomKeyWeighted<Weather>(transitions, currentWeather) as Weather;
     }
 
@@ -294,5 +284,10 @@ export class WeatherProvider {
         const { min, max } = ForecastAdderTemperatures[weather];
 
         return getRandomInt(baseMin + min, baseMax + max);
+    }
+
+    @On('soz-upw:server:onPollutionManagerReady', true)
+    public onPollutionManagerReady() {
+        this.pollutionManagerReady = true;
     }
 }

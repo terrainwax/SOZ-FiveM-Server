@@ -1,17 +1,19 @@
 import { Inject, Injectable } from '@core/decorators/injectable';
 import { wait, waitUntil } from '@core/utils';
+import { ServerEvent } from '@public/shared/event';
 
 import {
     Animation,
     AnimationInfo,
     animationOptionsToFlags,
+    AnimationProps,
     AnimationStopReason,
     PlayOptions,
     Scenario,
 } from '../../shared/animation';
 import { transformForwardPoint2D, Vector2, Vector3 } from '../../shared/polyzone/vector';
 import { WeaponName } from '../../shared/weapons/weapon';
-import { ResourceLoader } from '../resources/resource.loader';
+import { ResourceLoader } from '../repository/resource.loader';
 
 const defaultPlayOptions: PlayOptions = {
     ped: null,
@@ -199,7 +201,9 @@ export class AnimationFactory {
                     );
 
                     SetEntityAsMissionEntity(propId, true, true);
-                    SetNetworkIdCanMigrate(NetworkGetNetworkIdFromEntity(propId), false);
+                    const netId = ObjToNet(propId);
+                    SetNetworkIdCanMigrate(netId, false);
+                    TriggerServerEvent(ServerEvent.OBJECT_ATTACHED_REGISTER, netId);
 
                     AttachEntityToEntity(
                         propId,
@@ -220,22 +224,7 @@ export class AnimationFactory {
                     );
 
                     if (prop.fx) {
-                        UseParticleFxAsset(prop.fx.dictionary);
-
-                        StartNetworkedParticleFxLoopedOnEntity(
-                            prop.fx.name,
-                            propId,
-                            prop.fx.position[0],
-                            prop.fx.position[1],
-                            prop.fx.position[2],
-                            prop.fx.rotation[0],
-                            prop.fx.rotation[1],
-                            prop.fx.rotation[2],
-                            prop.fx.scale,
-                            false,
-                            false,
-                            false
-                        );
+                        this.fxLoop(propId, prop);
                     }
 
                     props.push(propId);
@@ -280,10 +269,33 @@ export class AnimationFactory {
 
                     RemoveParticleFxFromEntity(prop);
                     DetachEntity(prop, false, false);
+                    TriggerServerEvent(ServerEvent.OBJECT_ATTACHED_UNREGISTER, ObjToNet(prop));
                     DeleteEntity(prop);
                 }
             }
         }, options);
+    }
+
+    private async fxLoop(entity: number, prop: AnimationProps) {
+        do {
+            UseParticleFxAsset(prop.fx.dictionary);
+            StartNetworkedParticleFxLoopedOnEntity(
+                prop.fx.name,
+                entity,
+                prop.fx.position[0],
+                prop.fx.position[1],
+                prop.fx.position[2],
+                prop.fx.rotation[0],
+                prop.fx.rotation[1],
+                prop.fx.rotation[2],
+                prop.fx.scale,
+                false,
+                false,
+                false
+            );
+
+            await wait(prop.fx.duration);
+        } while (prop.fx.manualLoop && DoesEntityExist(entity));
     }
 
     public createScenario(scenario: Scenario, options: Partial<PlayOptions> = {}): AnimationRunner {

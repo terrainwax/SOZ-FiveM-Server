@@ -22,7 +22,7 @@ type Props = {
     price?: number
 }
 
-const FORMAT_LOCALIZED: Intl.DateTimeFormatOptions = {day: "numeric", month: "long", year: "numeric", hour: "numeric", minute: "numeric"}
+const FORMAT_LOCALIZED: Intl.DateTimeFormatOptions = {day: "numeric", month: "numeric", year: "numeric", hour: "numeric", minute: "numeric"}
 const FORMAT_CURRENCY: Intl.NumberFormatOptions = {style: "currency", currency: 'USD', maximumFractionDigits: 0}
 
 const Draggable: FunctionComponent<Props> = ({ id, containerName, item, money, interactAction, onItemHover, price }) => {
@@ -67,6 +67,10 @@ const Draggable: FunctionComponent<Props> = ({ id, containerName, item, money, i
         } else if(item.type === 'fishing_rod'){
             if (item?.metadata?.bait) {
                 itemExtraLabel += ` [${item.metadata.bait?.label}]`
+            }
+        } else if(item.name === 'chainsaw'){
+            if (item?.metadata?.fuel) {
+                itemExtraLabel += ` [${item.metadata.fuel.toString()} L]`
             }
         } else if(item.type === 'fish'){
             if(item?.metadata?.weight && item?.metadata?.length){

@@ -4,12 +4,13 @@ import { Provider } from '@core/decorators/provider';
 
 import { ClientEvent } from '../../shared/event';
 import { PlayerData } from '../../shared/player';
-import { ResourceLoader } from '../resources/resource.loader';
+import { ResourceLoader } from '../repository/resource.loader';
 import { PlayerService } from './player.service';
 
 export type WalkStyleConf = {
     override: string;
     injury: string;
+    overloaded: string;
     drugAlcool: string;
     stress: string;
     item: string;
@@ -26,6 +27,7 @@ export class PlayerWalkstyleProvider {
     private conf: WalkStyleConf = {
         override: null,
         injury: null,
+        overloaded: null,
         drugAlcool: null,
         stress: null,
         item: null,
@@ -40,6 +42,8 @@ export class PlayerWalkstyleProvider {
             walkStyle = this.conf.override;
         } else if (this.conf.injury) {
             walkStyle = this.conf.injury;
+        } else if (this.conf.overloaded) {
+            walkStyle = this.conf.overloaded;
         } else if (this.conf.drugAlcool) {
             walkStyle = this.conf.drugAlcool;
         } else if (this.conf.stress) {
@@ -54,7 +58,7 @@ export class PlayerWalkstyleProvider {
 
         ResetPedMovementClipset(ped, transitionSpeed);
 
-        if (walkStyle === null || walkStyle === '') {
+        if (!walkStyle) {
             return;
         }
 

@@ -137,6 +137,11 @@ const checkExportCanOpen = async (): Promise<boolean> => {
 };
 
 async function togglePhone(): Promise<void> {
+    const isEditorModeActive = exports['soz-core'].IsEditorModeActive();
+    if (isEditorModeActive) {
+        return;
+    }
+
     if (global.isPhoneOpen) {
         return await hidePhone();
     }
@@ -233,6 +238,11 @@ RegisterNuiCB<void>(EmergencyEvents.LSMC_CALL, async (_, cb) => {
 RegisterNuiCB<void>(EmergencyEvents.UHU_CALL, async (_, cb) => {
     TriggerServerEvent('soz-core:lsmc:server:revive', null, true, true);
     hidePhone();
+    cb({});
+});
+
+RegisterNuiCB<void>(PhoneEvents.PHONE_LOADED, async (_, cb) => {
+    updateAvailability();
     cb({});
 });
 

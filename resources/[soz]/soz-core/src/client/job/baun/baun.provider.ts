@@ -1,8 +1,12 @@
+import { emitRpc } from '@public/core/rpc';
+import { CraftsList } from '@public/shared/craft/craft';
+import { JobType } from '@public/shared/job';
+import { RpcServerEvent } from '@public/shared/rpc';
+
 import { Once, OnceStep, OnEvent, OnNuiEvent } from '../../../core/decorators/event';
 import { Inject } from '../../../core/decorators/injectable';
 import { Provider } from '../../../core/decorators/provider';
 import { ClientEvent, NuiEvent } from '../../../shared/event';
-import { BaunCraftProcess, baunCraftProcesses, BaunRecipe } from '../../../shared/job/baun';
 import { MenuType } from '../../../shared/nui/menu';
 import { BlipFactory } from '../../blip';
 import { InventoryManager } from '../../inventory/inventory.manager';
@@ -36,6 +40,7 @@ export class BaunProvider {
         displayFlavorBlip: false,
         displayFurnitureBlip: false,
         displayResellBlip: false,
+        displaySnackBlip: false,
     };
 
     @Once(OnceStep.PlayerLoaded)
@@ -50,17 +55,16 @@ export class BaunProvider {
     }
 
     @OnEvent(ClientEvent.JOBS_BAUN_OPEN_SOCIETY_MENU)
-    public onOpenSocietyMenu() {
+    public async onOpenSocietyMenu() {
         if (this.nuiMenu.getOpened() === MenuType.BahamaUnicornJobMenu) {
             this.nuiMenu.closeMenu();
 
             return;
         }
 
-        const recipes = this.computeRecipes(baunCraftProcesses);
-        recipes.sort((a, b) => a.output.label.localeCompare(b.output.label));
+        const crafting = await emitRpc<CraftsList>(RpcServerEvent.CRAFT_GET_RECIPES, JobType.Baun);
         this.nuiMenu.openMenu(MenuType.BahamaUnicornJobMenu, {
-            recipes,
+            recipes: crafting.categories,
             state: this.state,
             onDuty: this.playerService.isOnDuty(),
         });
@@ -94,6 +98,15 @@ export class BaunProvider {
         });
         this.blipFactory.hide('displayFurnitureBlip', true);
 
+        this.blipFactory.create('displaySnackBlip', {
+            name: 'Point de récolte de snacks',
+            coords: { x: -753.6, y: -2571.93, z: 13.9 },
+            sprite: 478,
+            color: 28,
+            scale: 0.9,
+        });
+        this.blipFactory.hide('displaySnackBlip', true);
+
         this.blipFactory.create('displayResellBlip', {
             name: 'Point de vente des cocktails',
             coords: { x: 393.02, y: 177.3, z: 103.86 },
@@ -102,31 +115,5 @@ export class BaunProvider {
             scale: 0.9,
         });
         this.blipFactory.hide('displayResellBlip', true);
-    }
-
-    private computeRecipes(craftProcesses: BaunCraftProcess[]): BaunRecipe[] {
-        return craftProcesses.map(craftProcess => {
-            let canCraft = true;
-            const inputs = [];
-            for (const input of craftProcess.inputs) {
-                const hasRequiredAmount = this.inventoryManager.hasEnoughItem(input.id, input.amount);
-                const inputItem = this.itemService.getItem(input.id);
-                inputs.push({
-                    label: inputItem.pluralLabel || inputItem.label,
-                    hasRequiredAmount,
-                    amount: input.amount,
-                });
-                canCraft = canCraft && hasRequiredAmount;
-            }
-            const outputItem = this.itemService.getItem(craftProcess.output.id);
-            return {
-                canCraft,
-                inputs,
-                output: {
-                    label: outputItem.pluralLabel || outputItem.label,
-                    amount: craftProcess.output.amount,
-                },
-            };
-        });
     }
 }

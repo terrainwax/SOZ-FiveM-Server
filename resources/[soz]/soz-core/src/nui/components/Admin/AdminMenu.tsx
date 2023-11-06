@@ -3,6 +3,7 @@ import { FunctionComponent } from 'react';
 import { AdminMenuData } from '../../../shared/admin/admin';
 import { MenuType } from '../../../shared/nui/menu';
 import { MainMenu, Menu, MenuContent, MenuItemSubMenuLink, MenuTitle } from '../Styleguide/Menu';
+import { CharacterSubMenu } from './CharacterSubMenu';
 import { DeveloperSubMenu } from './DeveloperSubMenu';
 import { GameMasterSubMenu } from './GamemasterSubMenu';
 import { InteractiveSubMenu } from './InteractiveSubMenu';
@@ -37,20 +38,18 @@ export const AdminMenu: FunctionComponent<AdminMenuStateProps> = ({ data }) => {
                         ⛑ Gestion métier
                     </MenuItemSubMenuLink>
                     <MenuItemSubMenuLink id="skin">🐕 Modification du style du joueur</MenuItemSubMenuLink>
-                    <MenuItemSubMenuLink disabled={!isStaffOrAdmin} id="vehicle">
+                    <MenuItemSubMenuLink disabled={!isStaffOrAdminOrGM} id="vehicle">
                         🚗 Gestion du véhicule
                     </MenuItemSubMenuLink>
                     <MenuItemSubMenuLink id="players">👨‍💻 Gestion des joueurs</MenuItemSubMenuLink>
+                    <MenuItemSubMenuLink disabled={!isStaffOrAdminOrGM} id="character">
+                        👨‍💼 Gestion des personnages
+                    </MenuItemSubMenuLink>
                     <MenuItemSubMenuLink id="developer">🛠 Outils pour développeur</MenuItemSubMenuLink>
                     <MenuItemSubMenuLink id="record">💿 Disquaires</MenuItemSubMenuLink>
                 </MenuContent>
             </MainMenu>
-            <GameMasterSubMenu
-                characters={data.characters}
-                banner={data.banner}
-                permission={data.permission}
-                state={data.state.gameMaster}
-            />
+            <GameMasterSubMenu banner={data.banner} permission={data.permission} state={data.state.gameMaster} />
             <InteractiveSubMenu banner={data.banner} state={data.state.interactive} />
             <JobSubMenu banner={data.banner} />
             <SkinSubMenu banner={data.banner} state={data.state.skin} />
@@ -59,6 +58,7 @@ export const AdminMenu: FunctionComponent<AdminMenuStateProps> = ({ data }) => {
             <DeveloperSubMenu banner={data.banner} state={data.state.developer} />
             <RecordSubMenu banner={data.banner} permission={data.permission} />
             <RecordAddSubMenu banner={data.banner} permission={data.permission}/>
+            <CharacterSubMenu banner={data.banner} characters={data.characters} />
         </Menu>
     );
 };

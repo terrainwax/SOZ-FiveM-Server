@@ -1,6 +1,7 @@
 import { FunctionComponent, useCallback, useEffect, useState } from 'react';
 
 import { uuidv4 } from '../../../core/utils';
+import { JobType } from '../../../shared/job';
 import { News } from '../../../shared/news';
 import { useNuiEvent } from '../../hook/nui';
 
@@ -34,9 +35,14 @@ const Banner: FunctionComponent<BannerProps> = ({ index, news, onDelete }) => {
             return '';
         }
 
-        if (/(lspd|bcso)/.test(type)) {
+        if (['lspd', 'bcso', 'sasp'].includes(news.type)) {
             return 'Avis de recherche';
-        } else if (type === 'fbi') {
+        } else if (
+            type === 'fbi_annoncement' ||
+            type === 'sasp_annoncement' ||
+            type === 'gouv' ||
+            type === 'presidence'
+        ) {
             return 'Annonce';
         } else {
             return type;
@@ -44,16 +50,34 @@ const Banner: FunctionComponent<BannerProps> = ({ index, news, onDelete }) => {
     };
 
     let backgroundImage;
+    let authorType = 'Reporter:';
 
     switch (news.type) {
         case 'lspd':
             backgroundImage = '/public/images/twitch-news/lspd.webp';
+            authorType = 'Agent:';
             break;
         case 'bcso':
             backgroundImage = '/public/images/twitch-news/bcso.webp';
+            authorType = 'Agent:';
             break;
         case 'fbi':
+        case 'fbi_annoncement':
             backgroundImage = '/public/images/twitch-news/fbi.webp';
+            authorType = 'Agent:';
+            break;
+        case 'sasp':
+        case 'sasp_annoncement':
+            backgroundImage = '/public/images/twitch-news/sasp.webp';
+            authorType = 'Agent:';
+            break;
+        case 'gouv':
+            backgroundImage = '/public/images/twitch-news/gouv.webp';
+            authorType = 'Agent:';
+            break;
+        case 'presidence':
+            backgroundImage = '/public/images/twitch-news/presidence.webp';
+            authorType = '';
             break;
         case 'reboot_5':
             backgroundImage = 'https://soz.zerator.com/static/images/reboot_5.png';
@@ -62,7 +86,11 @@ const Banner: FunctionComponent<BannerProps> = ({ index, news, onDelete }) => {
             backgroundImage = 'https://soz.zerator.com/static/images/reboot_15.png';
             break;
         default:
-            backgroundImage = '/public/images/twitch-news/default.webp';
+            if (news.job === JobType.YouNews) {
+                backgroundImage = '/public/images/twitch-news/younews.webp';
+            } else {
+                backgroundImage = '/public/images/twitch-news/default.webp';
+            }
             break;
     }
 
@@ -78,7 +106,7 @@ const Banner: FunctionComponent<BannerProps> = ({ index, news, onDelete }) => {
         >
             <h3 className="flex h-[25%] justify-end text-4xl items-center pr-4 uppercase">{newsTitle(news.type)}</h3>
             <div className="pl-[28%] h-[62%] text-[0.91rem] lg:text-lg">
-                {/(lspd|bcso)/.test(news.type) ? (
+                {['lspd', 'bcso', 'sasp'].includes(news.type) ? (
                     <p className="flex flex-col justify-between p-2 h-full overflow-hidden break-words">
                         <p>
                             Les forces de l'ordre sont à la recherche de <strong>{news.message}</strong>.
@@ -94,7 +122,7 @@ const Banner: FunctionComponent<BannerProps> = ({ index, news, onDelete }) => {
                             <div className="flex flex-col justify-between p-1 h-full">
                                 <p className="max-h-40 overflow-hidden break-words">{news.message}</p>
                                 <p className="text-right pr-4 text-lg">
-                                    Reporter: <strong>{news.reporter}</strong>
+                                    {authorType} <strong>{news.reporter}</strong>
                                 </p>
                             </div>
                         )}

@@ -7,7 +7,6 @@ import { Race, RaceRanking, RaceRankingInfo } from '@public/shared/race';
 import { RpcServerEvent } from '@public/shared/rpc';
 
 import { PrismaService } from '../database/prisma.service';
-import { Monitor } from '../monitor/monitor';
 import { Notifier } from '../notifier';
 import { PlayerService } from '../player/player.service';
 import { RaceRepository } from '../repository/race.repository';
@@ -23,9 +22,6 @@ export class RaceProvider {
     @Inject(PlayerService)
     private playerService: PlayerService;
 
-    @Inject(Monitor)
-    private monitor: Monitor;
-
     @Inject(Notifier)
     private notifier: Notifier;
 
@@ -40,6 +36,8 @@ export class RaceProvider {
                 enabled: race.enabled,
                 checkpoints: JSON.stringify(race.checkpoints),
                 fps: false,
+                garage: race.garageLocation && JSON.stringify(race.garageLocation),
+                configuration: race.vehicleConfiguration && JSON.stringify(race.vehicleConfiguration),
             },
         });
 
@@ -66,6 +64,8 @@ export class RaceProvider {
                 enabled: race.enabled,
                 checkpoints: JSON.stringify(race.checkpoints),
                 fps: race.fps,
+                garage: race.garageLocation && JSON.stringify(race.garageLocation),
+                configuration: race.vehicleConfiguration && JSON.stringify(race.vehicleConfiguration),
             },
         });
 
@@ -103,9 +103,6 @@ export class RaceProvider {
             return;
         }
 
-        const races = await this.raceRepository.get();
-        const race = races[raceId];
-
         const dbInfo = await this.prismaService.race_score.findUnique({
             where: {
                 citizenid_race_id: {
@@ -138,18 +135,6 @@ export class RaceProvider {
                 },
             });
         }
-
-        this.monitor.publish(
-            'race_finish',
-            {
-                player_source: source,
-                race: race.id,
-            },
-            {
-                name: race.name,
-                time: result[0][result[0].length - 1],
-            }
-        );
     }
 
     @OnEvent(ServerEvent.RACE_CLEAR_RANKING)

@@ -16,7 +16,7 @@ export class VehicleCommandProvider {
     @Inject(Logger)
     private logger: Logger;
 
-    @Command('car', { role: ['staff', 'admin'], description: 'Spawn Vehicle (Admin Only)' })
+    @Command('car', { role: ['staff', 'admin', 'gamemaster'], description: 'Spawn Vehicle (Admin Only)' })
     async createCarCommand(source: number, model: string) {
         const spawned = await this.vehicleSpawner.spawnTemporaryVehicle(source, model);
 
@@ -48,6 +48,15 @@ export class VehicleCommandProvider {
 
         this.vehicleStateService.updateVehicleCondition(closestVehicle.vehicleNetworkId, {
             fuelLevel: newlevel,
+        });
+    }
+
+    @Command('oil', { role: ['admin'], description: 'Set oil level (Admin Only)' })
+    async oilCommand(source: number, newlevel: number) {
+        const closestVehicle = await this.vehicleSpawner.getClosestVehicle(source);
+
+        this.vehicleStateService.updateVehicleCondition(closestVehicle.vehicleNetworkId, {
+            oilLevel: newlevel,
         });
     }
 }

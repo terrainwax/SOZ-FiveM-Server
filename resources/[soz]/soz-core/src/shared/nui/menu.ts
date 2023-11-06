@@ -1,3 +1,4 @@
+import { JobType } from '@public/shared/job';
 import { NuiJobEmployeeOnDuty } from '@public/shared/nui/job';
 import { PlayerPersonalMenuData } from '@public/shared/nui/player';
 
@@ -6,6 +7,7 @@ import { WardrobeMenuData } from '../cloth';
 import { DrivingSchoolMenuData } from '../driving-school';
 import { FuelType } from '../fuel';
 import { AdminMapperMenuData, HousingUpgradesMenuData } from '../housing/menu';
+import { DmcJobMenuData } from '../job/dmc';
 import { MenuUpwData, UpwOrderMenuData } from '../job/upw';
 import { Race } from '../race';
 import { BossShopMenu, ShopProduct } from '../shop';
@@ -13,6 +15,7 @@ import { GarageMenuData } from '../vehicle/garage';
 import { VehicleCustomMenuData } from '../vehicle/modification';
 import { VehicleAuctionMenuData, VehicleDealershipMenuData, VehicleMenuData } from '../vehicle/vehicle';
 import { WeaponsMenuData } from '../weapons/weapon';
+import { PropPlacementMenuData } from './prop_placement';
 
 export interface NuiMenuMethodMap {
     ArrowDown: never;
@@ -55,6 +58,7 @@ export enum MenuType {
     Garage = 'garage_menu',
     JobBennys = 'job_bennys',
     JobUpw = 'job_upw',
+    JobNews = 'job_news',
     UpwOrderMenu = 'upw_order',
     OilSetStationPrice = 'oil_set_station_price',
     SetHealthState = 'set_health_state',
@@ -64,6 +68,7 @@ export enum MenuType {
     VehicleCustom = 'vehicle_custom',
     VehicleDealership = 'vehicle_dealership',
     Wardrobe = 'wardrobe',
+    GarbageJobMenu = 'garbage_job_menu',
     GunSmith = 'gunsmith',
     LsmcPharmacy = 'lsmc_pharmacy',
     MandatoryJobMenu = 'mdr_job',
@@ -71,8 +76,9 @@ export enum MenuType {
     EasterShop = 'easter_shop',
     TaxiJobMenu = 'taxi_job',
     PlayerPersonal = 'player_personal',
+    PropPlacementMenu = 'prop_placement_menu',
     LsmcJobMenu = 'lsmc_job_menu',
-    JobOnDutyMenu = 'job_on_duty,',
+    JobOnDutyMenu = 'job_on_duty',
     Album = 'album',
     DrugShop = 'drug_shop',
     DrugGarden = 'drug_garden',
@@ -80,6 +86,9 @@ export enum MenuType {
     RentBoat = 'rent_boat',
     RaceAdmin = 'RaceAdmin',
     RaceRank = 'RaceRank',
+    GouvJobMenu = 'gouv_job',
+    FDFJobMenu = 'fdf_job',
+    DmcJobMenu = 'dmc_job',
 }
 
 export interface MenuTypeMap extends Record<MenuType, any> {
@@ -121,4 +130,9 @@ export interface MenuTypeMap extends Record<MenuType, any> {
     [MenuType.RentBoat]: any;
     [MenuType.RaceAdmin]: Race[];
     [MenuType.RaceRank]: { id: number; name: string };
+    [MenuType.GouvJobMenu]: { onDuty: boolean };
+    [MenuType.PropPlacementMenu]: PropPlacementMenuData;
+    [MenuType.FDFJobMenu]: any;
+    [MenuType.JobNews]: { job: JobType };
+    [MenuType.DmcJobMenu]: DmcJobMenuData;
 }

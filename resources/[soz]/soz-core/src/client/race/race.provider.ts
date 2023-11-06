@@ -1,13 +1,24 @@
+import { Exportable } from '@public/core/decorators/exports';
 import { Tick, TickInterval } from '@public/core/decorators/tick';
 import { emitRpc } from '@public/core/rpc';
 import { wait } from '@public/core/utils';
 import { Control } from '@public/shared/input';
 import { BoxZone } from '@public/shared/polyzone/box.zone';
 import { CylinderZone } from '@public/shared/polyzone/cylinder.zone';
-import { getDurationStr, Race, RaceCheckpointMenuOptions, RaceRankingInfo, SplitInfo } from '@public/shared/race';
+import {
+    getDurationStr,
+    Race,
+    RaceCheckpointMenuOptions,
+    RaceLaunchMenuOptions,
+    RaceRankingInfo,
+    RaceUpdateMenuOptions,
+    RaceVehConfigurationOptions,
+    SplitInfo,
+} from '@public/shared/race';
 import { getRandomInt } from '@public/shared/random';
 import { Err, Ok } from '@public/shared/result';
 import { RpcServerEvent } from '@public/shared/rpc';
+import { GarageCategory, GarageType, PlaceCapacity } from '@public/shared/vehicle/garage';
 import { VehicleColor, VehicleModType } from '@public/shared/vehicle/modification';
 import { getDefaultVehicleVolatileState } from '@public/shared/vehicle/vehicle';
 
@@ -18,26 +29,26 @@ import { ClientEvent, NuiEvent, ServerEvent } from '../../shared/event';
 import { MenuType } from '../../shared/nui/menu';
 import { toVector4Object, Vector2, Vector3, Vector4 } from '../../shared/polyzone/vector';
 import { BlipFactory } from '../blip';
-import { DrawService } from '../draw.service';
 import { PedFactory } from '../factory/ped.factory';
+import { Monitor } from '../monitor/monitor';
 import { Notifier } from '../notifier';
 import { InputService } from '../nui/input.service';
 import { NuiDispatch } from '../nui/nui.dispatch';
 import { NuiMenu } from '../nui/nui.menu';
+import { ObjectProvider } from '../object/object.provider';
 import { PlayerPositionProvider } from '../player/player.position.provider';
-import { PlayerService } from '../player/player.service';
-import { RaceRepository } from '../resources/race.repository';
-import { ResourceLoader } from '../resources/resource.loader';
+import { RaceRepository } from '../repository/race.repository';
+import { ResourceLoader } from '../repository/resource.loader';
 import { TargetFactory } from '../target/target.factory';
+import { VehicleGarageProvider } from '../vehicle/vehicle.garage.provider';
+import { VehicleModificationService } from '../vehicle/vehicle.modification.service';
+import { VehicleService } from '../vehicle/vehicle.service';
 import { VehicleStateService } from '../vehicle/vehicle.state.service';
 
 const npcModel = 's_m_m_autoshop_02';
 
 @Provider()
 export class RaceProvider {
-    @Inject(PlayerService)
-    private playerService: PlayerService;
-
     @Inject(NuiMenu)
     private nuiMenu: NuiMenu;
 
@@ -68,13 +79,26 @@ export class RaceProvider {
     @Inject(BlipFactory)
     private blipFactory: BlipFactory;
 
-    @Inject(DrawService)
-    private drawService: DrawService;
+    @Inject(Monitor)
+    private monitor: Monitor;
 
     @Inject(VehicleStateService)
     private vehicleStateService: VehicleStateService;
 
+    @Inject(VehicleService)
+    private vehicleService: VehicleService;
+
+    @Inject(VehicleGarageProvider)
+    private vehicleGarageProvider: VehicleGarageProvider;
+
+    @Inject(VehicleModificationService)
+    private vehicleModificationService: VehicleModificationService;
+
+    @Inject(ObjectProvider)
+    private objectProvider: ObjectProvider;
+
     private inRace = false;
+    private preRace = false;
     private currentAdminMenuRace: string = null;
 
     @Once(OnceStep.Start)
@@ -102,6 +126,36 @@ export class RaceProvider {
                     this.nuiMenu.openMenu(MenuType.RaceRank, { id: race.id, name: race.name });
                 },
             },
+            {
+                label: 'Accéder au parking temporaire',
+                icon: 'c:garage/ParkingPublic.png',
+                canInteract: entity => {
+                    const race = Object.values(this.raceRepository.get()).find(race => race.npc == entity);
+                    return race && race.garageLocation != null;
+                },
+                action: entity => {
+                    const race = Object.values(this.raceRepository.get()).find(race => race.npc == entity);
+                    const id = 'race' + race.id;
+                    this.vehicleGarageProvider.enterGarage(id, {
+                        category: GarageCategory.All,
+                        type: GarageType.Public,
+                        id: id,
+                        name: id,
+                        parkingPlaces: [
+                            {
+                                center: race.garageLocation,
+                                heading: race.garageLocation[3],
+                                data: {
+                                    capacity: [PlaceCapacity.Small, PlaceCapacity.Medium, PlaceCapacity.Large],
+                                },
+                            },
+                        ],
+                        zone: {
+                            center: race.npcPosition,
+                        },
+                    });
+                },
+            },
         ]);
     }
 
@@ -118,7 +172,7 @@ export class RaceProvider {
     }
 
     @Tick(TickInterval.EVERY_FRAME, 'race-display')
-    public displayLoop() {
+    public raceDisplayLoop() {
         const races = this.raceRepository.get();
         for (const race of Object.values(races)) {
             if (!race.display) {
@@ -135,6 +189,13 @@ export class RaceProvider {
                 minZ: race.npcPosition[2],
                 maxZ: race.npcPosition[2] + 2,
             }).draw([0, 255, 0], 128, 'PNJ');
+            if (race.garageLocation) {
+                new BoxZone(race.garageLocation, 1.0, 1.0, {
+                    heading: race.garageLocation[3],
+                    minZ: race.garageLocation[2],
+                    maxZ: race.garageLocation[2] + 2,
+                }).draw([0, 255, 0], 128, 'Garage Spawn');
+            }
             race.checkpoints.forEach((checkpoint, index) =>
                 new CylinderZone(
                     [checkpoint[0], checkpoint[1]] as Vector2,
@@ -217,6 +278,10 @@ export class RaceProvider {
                     return Ok(true);
                 }
 
+                if (value == 'ped') {
+                    return Ok(true);
+                }
+
                 const hash = GetHashKey(value);
                 if (!IsModelValid(hash)) {
                     return Err("Ce modèle n'existe pas");
@@ -278,26 +343,27 @@ export class RaceProvider {
         TriggerServerEvent(ServerEvent.RACE_UPDATE, race);
     }
 
-    @OnNuiEvent(NuiEvent.RaceUpdateNPCLocation)
-    public async onRaceUpdateNPCLocation(raceId: number) {
+    @OnNuiEvent(NuiEvent.RaceUpdateLocation)
+    public async onRaceUpdateLocation({ raceId, option }: { option: RaceUpdateMenuOptions; raceId: number }) {
+        const race = this.raceRepository.find(raceId);
+
         const playerPed = PlayerPedId();
         const coords = GetEntityCoords(playerPed);
         const heading = GetEntityHeading(playerPed);
 
-        const race = this.raceRepository.find(raceId);
-        race.npcPosition = [coords[0], coords[1], coords[2] - 1, heading] as Vector4;
+        const loc = [coords[0], coords[1], coords[2] - 1, heading] as Vector4;
 
-        TriggerServerEvent(ServerEvent.RACE_UPDATE, race);
-    }
-
-    @OnNuiEvent(NuiEvent.RaceUpdateStart)
-    public async onRaceUpdateStart(raceId: number) {
-        const playerPed = PlayerPedId();
-        const coords = GetEntityCoords(playerPed);
-        const heading = GetEntityHeading(playerPed);
-
-        const race = this.raceRepository.find(raceId);
-        race.start = [coords[0], coords[1], coords[2] - 1, heading] as Vector4;
+        switch (option) {
+            case RaceUpdateMenuOptions.npc:
+                race.npcPosition = loc;
+                break;
+            case RaceUpdateMenuOptions.garage:
+                race.garageLocation = loc;
+                break;
+            case RaceUpdateMenuOptions.start:
+                race.start = loc;
+                break;
+        }
 
         TriggerServerEvent(ServerEvent.RACE_UPDATE, race);
     }
@@ -315,14 +381,45 @@ export class RaceProvider {
         TriggerServerEvent(ServerEvent.RACE_UPDATE, race);
     }
 
+    @OnNuiEvent(NuiEvent.RaceVehConfiguration)
+    public async onRaceVehVonfiguration({ raceId, option }: { option: RaceVehConfigurationOptions; raceId: number }) {
+        const race = this.raceRepository.find(raceId);
+
+        switch (option) {
+            case RaceVehConfigurationOptions.default:
+                race.vehicleConfiguration = null;
+                break;
+            case RaceVehConfigurationOptions.current:
+                {
+                    const ped = PlayerPedId();
+                    const vehicle = GetVehiclePedIsIn(ped, false);
+                    if (!vehicle) {
+                        this.notifier.error("Tu n'es pas dans un véhicle");
+                        return;
+                    }
+
+                    if (GetEntityModel(vehicle) != GetHashKey(race.carModel)) {
+                        this.notifier.error("Tu n'es pas dans le bon modèle de véhicle");
+                        return;
+                    }
+
+                    const configuration = this.vehicleModificationService.getVehicleConfiguration(vehicle);
+                    race.vehicleConfiguration = configuration;
+                }
+                break;
+        }
+
+        TriggerServerEvent(ServerEvent.RACE_UPDATE, race);
+    }
+
     @OnNuiEvent(NuiEvent.RaceDelete)
     public async onRaceDelete(raceId: number) {
         TriggerServerEvent(ServerEvent.RACE_DELETE, raceId);
     }
 
-    @OnNuiEvent(NuiEvent.RaceTry)
-    public async onRaceTry(raceId: number) {
-        this.startRace(raceId, true);
+    @OnNuiEvent(NuiEvent.RaceMenuLaunch)
+    public async onRaceLaunch({ raceId, option }: { option: RaceLaunchMenuOptions; raceId: number }) {
+        this.startRace(raceId, option == RaceLaunchMenuOptions.test);
     }
 
     @OnNuiEvent(NuiEvent.RaceAddCheckpoint)
@@ -413,13 +510,18 @@ export class RaceProvider {
 
     private async startRace(raceId: number, test: boolean) {
         const race = this.raceRepository.find(raceId);
+        const start = Date.now();
 
         const hash = GetHashKey(race.carModel);
-        if (!IsModelInCdimage(hash) || !IsModelAVehicle(hash)) {
+        if (race.carModel != 'ped' && (!IsModelInCdimage(hash) || !IsModelAVehicle(hash))) {
             this.notifier.error(`could not load model with given hash or model name ${race.carModel} ${hash}`);
 
             return;
         }
+
+        const ped = PlayerPedId();
+        const coords = GetEntityCoords(ped);
+        const heading = GetEntityHeading(ped);
 
         const [bestRun, bestSplits] = await emitRpc<[number[], number[]]>(RpcServerEvent.RACE_GET_SPLITS, race.id);
 
@@ -429,43 +531,63 @@ export class RaceProvider {
             this.firstPersonCheck();
         }
 
-        const ped = PlayerPedId();
+        this.objectProvider.disable();
+
         SetEntityInvincible(ped, true);
         SetPlayerInvincible(PlayerId(), true);
 
-        await this.resourceLoader.loadModel(hash);
+        let vehicle = null;
+        if (race.carModel != 'ped') {
+            await this.resourceLoader.loadModel(hash);
 
-        const vehicle = CreateVehicle(hash, race.start[0], race.start[1], race.start[2], race.start[3], false, false);
-        SetVehRadioStation(vehicle, 'OFF');
-        this.vehicleStateService.setVehicleState(
-            vehicle,
-            {
-                ...getDefaultVehicleVolatileState(),
-            },
-            true
-        );
+            vehicle = CreateVehicle(hash, race.start[0], race.start[1], race.start[2], race.start[3], false, false);
+            SetVehRadioStation(vehicle, 'OFF');
+            this.vehicleStateService.setVehicleState(
+                vehicle,
+                {
+                    ...getDefaultVehicleVolatileState(),
+                },
+                true
+            );
 
-        SetVehicleModKit(vehicle, 0);
-        ToggleVehicleMod(vehicle, VehicleModType.Turbo, true);
-        SetVehicleMod(vehicle, VehicleModType.Engine, GetNumVehicleMods(vehicle, VehicleModType.Engine) - 1, false);
-        SetVehicleMod(vehicle, VehicleModType.Brakes, GetNumVehicleMods(vehicle, VehicleModType.Brakes) - 1, false);
-        SetVehicleMod(
-            vehicle,
-            VehicleModType.Transmission,
-            GetNumVehicleMods(vehicle, VehicleModType.Transmission) - 1,
-            false
-        );
-        SetVehicleColours(
-            vehicle,
-            getRandomInt(0, VehicleColor.BrushedGold),
-            getRandomInt(0, VehicleColor.BrushedGold)
-        );
+            if (race.vehicleConfiguration) {
+                this.vehicleService.applyVehicleConfiguration(vehicle, race.vehicleConfiguration);
+            } else {
+                SetVehicleModKit(vehicle, 0);
+                ToggleVehicleMod(vehicle, VehicleModType.Turbo, true);
+                SetVehicleMod(
+                    vehicle,
+                    VehicleModType.Engine,
+                    GetNumVehicleMods(vehicle, VehicleModType.Engine) - 1,
+                    false
+                );
+                SetVehicleMod(
+                    vehicle,
+                    VehicleModType.Brakes,
+                    GetNumVehicleMods(vehicle, VehicleModType.Brakes) - 1,
+                    false
+                );
+                SetVehicleMod(
+                    vehicle,
+                    VehicleModType.Transmission,
+                    GetNumVehicleMods(vehicle, VehicleModType.Transmission) - 1,
+                    false
+                );
+                SetVehicleColours(
+                    vehicle,
+                    getRandomInt(0, VehicleColor.BrushedGold),
+                    getRandomInt(0, VehicleColor.BrushedGold)
+                );
+            }
 
-        await wait(100);
+            await wait(100);
 
-        TaskWarpPedIntoVehicle(ped, vehicle, -1);
+            TaskWarpPedIntoVehicle(ped, vehicle, -1);
 
-        this.resourceLoader.unloadModel(hash);
+            this.resourceLoader.unloadModel(hash);
+        } else {
+            await this.playerPositionProvider.teleportPlayerToPosition(race.start);
+        }
 
         await emitRpc(RpcServerEvent.RACE_SERVER_START);
 
@@ -481,18 +603,32 @@ export class RaceProvider {
             DestroyAllCams(true);
         }
 
-        DeleteVehicle(vehicle);
+        if (vehicle) {
+            DeleteVehicle(vehicle);
+        }
 
-        const tpCoords = race.npc
-            ? ([...GetOffsetFromEntityInWorldCoords(race.npc, 0.0, 1.0, 0.0), race.npcPosition[3] + 180] as Vector4)
-            : race.npcPosition;
-        await this.playerPositionProvider.teleportPlayerToPosition(tpCoords);
+        await this.playerPositionProvider.teleportPlayerToPosition([...coords, heading] as Vector4);
+
+        this.objectProvider.enable();
 
         await wait(200);
 
         SetEntityInvincible(ped, false);
         SetPlayerInvincible(PlayerId(), false);
         SetFollowPedCamViewMode(view);
+
+        this.monitor.publish(
+            'race_finish',
+            {
+                race: race.id,
+            },
+            {
+                name: race.name,
+                time: result != null ? result[0][result[0].length - 1] : 0,
+                duration: Date.now() - start,
+                complete: !test && result,
+            }
+        );
 
         if (!test && result) {
             TriggerServerEvent(ServerEvent.RACE_FINISH, raceId, result);
@@ -507,6 +643,22 @@ export class RaceProvider {
             }
 
             DisableControlAction(0, Control.NextCamera, true);
+            await wait(0);
+        }
+    }
+
+    private async pedRaceFreeze() {
+        while (this.preRace) {
+            DisableControlAction(0, Control.Sprint, true);
+            DisableControlAction(0, Control.Enter, true);
+            DisableControlAction(0, Control.MoveLeftRight, true);
+            DisableControlAction(0, Control.MoveUpDown, true);
+            DisableControlAction(0, Control.Duck, true);
+            DisableControlAction(0, Control.Jump, true);
+            DisableControlAction(0, Control.VehicleAccelerate, true);
+            DisableControlAction(0, Control.VehicleFlyThrottleUp, true);
+            DisableControlAction(0, Control.VehicleSubThrottleUp, true);
+            DisableControlAction(0, Control.VehiclePushbikePedal, true);
             await wait(0);
         }
     }
@@ -542,9 +694,19 @@ export class RaceProvider {
 
         let result: [number[], number[]] = null;
         this.inRace = true;
+        this.preRace = true;
 
-        SetVehicleHandbrake(veh, true);
-        SetVehicleBrake(veh, true);
+        if (
+            veh &&
+            !IsThisModelABicycle(race.carModel) &&
+            !IsThisModelAHeli(race.carModel) &&
+            !IsThisModelAPlane(race.carModel)
+        ) {
+            SetVehicleHandbrake(veh, true);
+            SetVehicleBrake(veh, true);
+        } else {
+            this.pedRaceFreeze();
+        }
 
         PlaySoundFrontend(-1, '5S', 'MP_MISSION_COUNTDOWN_SOUNDSET', false);
         await wait(1000);
@@ -565,8 +727,11 @@ export class RaceProvider {
         raceData[0] = Date.now();
         this.nuiDispatch.dispatch('race', 'setStart', raceData[0]);
 
-        SetVehicleHandbrake(veh, false);
-        SetVehicleBrake(veh, false);
+        if (veh) {
+            SetVehicleHandbrake(veh, false);
+            SetVehicleBrake(veh, false);
+        }
+        this.preRace = false;
 
         for (let index = 0; index < race.checkpoints.length; index++) {
             const checkpoint = race.checkpoints[index];
@@ -611,12 +776,18 @@ export class RaceProvider {
             );
 
             while (!zone.isPointInside(GetEntityCoords(ped) as Vector3)) {
-                if (!IsPedInAnyVehicle(ped, false)) {
+                if (veh && !IsPedInAnyVehicle(ped, false)) {
+                    break;
+                }
+                if (!veh && IsPedRagdoll(ped)) {
                     break;
                 }
                 await wait(1);
             }
-            if (!IsPedInAnyVehicle(ped, false)) {
+            if (veh && !IsPedInAnyVehicle(ped, false)) {
+                break;
+            }
+            if (!veh && IsPedRagdoll(ped)) {
                 break;
             }
 
@@ -675,8 +846,10 @@ export class RaceProvider {
             DeleteCheckpoint(checkpointHandle);
         }
 
-        SetVehicleHandbrake(veh, true);
-        SetVehicleBrake(veh, true);
+        if (veh) {
+            SetVehicleHandbrake(veh, true);
+            SetVehicleBrake(veh, true);
+        }
 
         if (!race.fps) {
             const camPos = GetGameplayCamCoord();
@@ -792,5 +965,10 @@ export class RaceProvider {
         if (this.blipFactory.exist(blibId)) {
             this.blipFactory.remove(blibId);
         }
+    }
+
+    @Exportable('IsInRace')
+    public isInRace() {
+        return this.inRace;
     }
 }

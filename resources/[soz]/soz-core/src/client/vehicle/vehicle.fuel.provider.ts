@@ -15,12 +15,12 @@ import { AnimationService } from '../animation/animation.service';
 import { BlipFactory } from '../blip';
 import { Notifier } from '../notifier';
 import { NuiDispatch } from '../nui/nui.dispatch';
+import { ObjectProvider } from '../object/object.provider';
 import { PlayerService } from '../player/player.service';
 import { ProgressService } from '../progress.service';
-import { FuelStationRepository } from '../resources/fuel.station.repository';
+import { FuelStationRepository } from '../repository/fuel.station.repository';
 import { SoundService } from '../sound.service';
 import { TargetFactory } from '../target/target.factory';
-import { ObjectFactory } from './../world/object.factory';
 import { VehicleService } from './vehicle.service';
 import { VehicleStateService } from './vehicle.state.service';
 
@@ -65,8 +65,8 @@ export class VehicleFuelProvider {
     @Inject(SoundService)
     private soundService: SoundService;
 
-    @Inject(ObjectFactory)
-    private objectFFactory: ObjectFactory;
+    @Inject(ObjectProvider)
+    private objectProvider: ObjectProvider;
 
     @Inject(NuiDispatch)
     private nuiDispatch: NuiDispatch;
@@ -108,7 +108,11 @@ export class VehicleFuelProvider {
                 station.fuel === FuelType.Kerosene ||
                 station.name === 'Cayo'
             ) {
-                station.entity = this.objectFFactory.create(station.model, station.position, true);
+                station.objectId = await this.objectProvider.createObject({
+                    model: station.model,
+                    position: station.position,
+                    id: `fuel_station_${station.name}`,
+                });
             }
         }
 
@@ -313,7 +317,7 @@ export class VehicleFuelProvider {
             },
             {
                 icon: 'c:fuel/pistolet.png',
-                label: 'Déposer le pistolet',
+                label: 'Reposer le pistolet',
                 action: (entity: number) => {
                     this.toggleStationPistol(entity);
                 },
@@ -516,6 +520,7 @@ export class VehicleFuelProvider {
         RopeUnloadTextures();
         DeleteRope(this.currentStationPistol.rope);
         SetEntityAsMissionEntity(this.currentStationPistol.object, true, true);
+        TriggerServerEvent(ServerEvent.OBJECT_ATTACHED_UNREGISTER, ObjToNet(this.currentStationPistol.object));
         DeleteEntity(this.currentStationPistol.object);
 
         this.currentStationPistol = null;
@@ -560,7 +565,10 @@ export class VehicleFuelProvider {
             true
         );
 
-        SetNetworkIdCanMigrate(ObjToNet(object), false);
+        const netId = ObjToNet(object);
+        SetNetworkIdCanMigrate(netId, false);
+        TriggerServerEvent(ServerEvent.OBJECT_ATTACHED_REGISTER, netId);
+
         AttachEntityToEntity(
             object,
             PlayerPedId(),

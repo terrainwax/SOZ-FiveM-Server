@@ -27,14 +27,8 @@ local function SpawnFieldZones()
             onPlayerInOut = function(isIn)
                 if isIn and PlayerData.job.id == SozJobCore.JobType.Food and PlayerData.job.onduty then
                     currentField = zoneName
-                    QBCore.Functions.TriggerCallback("soz-jobs:server:food:getFieldHealth", function(health)
-                        currentFieldHealth = health
-                        DisplayFieldHealth(true, currentField, currentFieldHealth)
-                    end, zoneName)
                 else
                     currentField = nil
-                    currentFieldHealth = nil
-                    DisplayFieldHealth(false)
                 end
             end,
         }, {
@@ -153,46 +147,6 @@ Citizen.CreateThread(function()
         scale = FoodConfig.Blip.Scale,
     })
 
-    -- DUTY
-    exports["qb-target"]:AddBoxZone("food:duty", vector2(-1876.2, 2059.5), 0.6, 0.7, {
-        heading = 70.25,
-        minZ = 140.75,
-        maxZ = 141.5,
-    }, {
-        options = {
-            {
-                type = "server",
-                icon = "fas fa-sign-in-alt",
-                label = "Prise de service",
-                event = "QBCore:ToggleDuty",
-                canInteract = function()
-                    return not PlayerData.job.onduty
-                end,
-                job = SozJobCore.JobType.Food,
-            },
-            {
-                type = "server",
-                icon = "fas fa-sign-out-alt",
-                label = "Fin de service",
-                event = "QBCore:ToggleDuty",
-                canInteract = function()
-                    return PlayerData.job.onduty
-                end,
-                job = SozJobCore.JobType.Food,
-            },
-            {
-                type = "server",
-                event = "QBCore:GetEmployOnDuty",
-                icon = "fas fa-users",
-                label = "Employé(e)s en service",
-                canInteract = function()
-                    return PlayerData.job.onduty and SozJobCore.Functions.HasPermission(PlayerData.job.id, SozJobCore.JobPermission.OnDutyView)
-                end,
-                job = SozJobCore.JobType.Food,
-            },
-        },
-    })
-
     SpawnFieldZones()
 end)
 
@@ -218,6 +172,11 @@ FoodJob.Functions.CollectIngredients = function(field)
     if IsPedInAnyVehicle(PlayerPedId(), false) then
         return
     end
+
+    QBCore.Functions.TriggerCallback("soz-jobs:server:food:getFieldHealth", function(health)
+        currentFieldHealth = health
+        DisplayFieldHealth(true, currentField, currentFieldHealth)
+    end, currentField)
 
     QBCore.Functions.Progressbar("food-collect-ingredients", "Vous récoltez des ingrédients", FoodConfig.Collect.Grape.Duration, false, true,
                                  {
@@ -250,15 +209,25 @@ FoodJob.Functions.CollectIngredients = function(field)
 
                     if currentFieldHealth == 0 then
                         exports["soz-core"]:DrawNotification("Le champ est épuisé...", "warning")
+                        currentFieldHealth = nil
+                        DisplayFieldHealth(false)
                     else
                         TriggerEvent("soz-jobs:client:food-collect-ingredients")
                     end
+                    DisplayFieldHealth(true, currentField, currentFieldHealth)
+                else
+                    currentFieldHealth = nil
+                    DisplayFieldHealth(false)
                 end
-                DisplayFieldHealth(true, currentField, currentFieldHealth)
             end, field)
         else
+            currentFieldHealth = nil
+            DisplayFieldHealth(false)
             exports["soz-core"]:DrawNotification("Vous n'avez pas récolté d'ingrédients", "error")
         end
+    end, function()
+        currentFieldHealth = nil
+        DisplayFieldHealth(false)
     end)
 end
 
@@ -382,7 +351,12 @@ end)
 ---
 local function PlayerHasKnifeEquiped()
     local ped = PlayerPedId()
-    return GetSelectedPedWeapon(ped) == FoodConfig.HuntingWeapon
+    for _, v in pairs(FoodConfig.HuntingWeapon) do
+        if GetSelectedPedWeapon(ped) == v then
+            return true
+        end
+    end
+    return false
 end
 
 for animal, _ in pairs(FoodConfig.AnimalAllowedToHunt) do
@@ -434,7 +408,9 @@ RegisterNetEvent("jobs:client:food:hunting", function(data)
         disableCombat = true,
     }, {}, {}, {}, function() -- Done
         if hasKnife then
-            TriggerServerEvent("jobs:server:food:hunting", NetworkGetNetworkIdFromEntity(data.entity))
+            if DoesEntityExist(data.entity) then
+                TriggerServerEvent("jobs:server:food:hunting", NetworkGetNetworkIdFromEntity(data.entity))
+            end
         else
             exports["soz-core"]:DrawNotification("L'animal ne respire plus...", "info")
         end

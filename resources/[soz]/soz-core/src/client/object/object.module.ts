@@ -1,7 +1,10 @@
 import { Module } from '../../core/decorators/module';
-import { ObjectService } from './object.service';
+import { CircularCameraProvider } from './circular.camera.provider';
+import { ObjectProvider } from './object.provider';
+import { PropHighlightProvider } from './prop.highlight.provider';
+import { PropPlacementProvider } from './prop.placement.provider';
 
 @Module({
-    providers: [ObjectService],
+    providers: [ObjectProvider, PropPlacementProvider, PropHighlightProvider, CircularCameraProvider],
 })
 export class ObjectModule {}

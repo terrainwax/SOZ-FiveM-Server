@@ -59,9 +59,18 @@ class _SocietyService {
         reqObj: PromiseRequest<PreDBSociety>,
         resp: PromiseEventResp<number>
     ): Promise<void> {
-        const player = PlayerService.getPlayer(reqObj.source);
+        let username: string = null;
+        let identifier: string = null;
+        if (reqObj.data.overrideIdentifier) {
+            username = reqObj.data.overrideIdentifier;
+            identifier = reqObj.data.overrideIdentifier;
+        } else {
+            const player = PlayerService.getPlayer(reqObj.source);
+            username = player?.username;
+            identifier = player.getPhoneNumber();
+        }
+
         const originalMessageNumber = reqObj.data.number;
-        let identifier = player.getPhoneNumber();
 
         if (reqObj.data.position) {
             const ped = GetPlayerPed(reqObj.source.toString());
@@ -70,20 +79,17 @@ class _SocietyService {
             reqObj.data.pedPosition = JSON.stringify({ x: playerX, y: playerY, z: playerZ });
         }
 
-        if (reqObj.data.overrideIdentifier) {
-            identifier = reqObj.data.overrideIdentifier;
-        }
         if (reqObj.data.anonymous) {
             identifier = `#${identifier}`;
         }
 
-        if (reqObj.data.number === '555-FBI' && player?.username) {
+        if (reqObj.data.number === '555-FBI' && username) {
             const url = GetConvar('soz_api_endpoint', 'https://api.soz.zerator.com') + '/discord/send-fbi';
             await axios.post(
                 url,
                 {
-                    phone: player.getPhoneNumber(),
-                    username: player.username,
+                    phone: identifier,
+                    username: username,
                     data: reqObj.data.message,
                 },
                 {
@@ -99,7 +105,7 @@ class _SocietyService {
             const contact = await this.contactsDB.addSociety(identifier, reqObj.data);
             resp({ status: 'ok', data: contact });
 
-            if (['555-LSPD', '555-BCSO', '555-POLICE'].includes(reqObj.data.number)) {
+            if (['555-LSPD', '555-BCSO', '555-SASP', '555-POLICE'].includes(reqObj.data.number)) {
                 this.policeMessageCount++;
             }
 
@@ -149,6 +155,7 @@ class _SocietyService {
             if (reqObj.data.number === '555-POLICE') {
                 const lspd = await PlayerService.getPlayersFromSocietyNumber('555-LSPD');
                 const bcso = await PlayerService.getPlayersFromSocietyNumber('555-BCSO');
+                const sasp = await PlayerService.getPlayersFromSocietyNumber('555-SASP');
                 const fbi = await PlayerService.getPlayersFromSocietyNumber('555-FBI');
 
                 const message: SocietyInsertDTO = {
@@ -166,6 +173,13 @@ class _SocietyService {
                             '555-BCSO'
                         )
                     ),
+                    '555-SASP': await this.contactsDB.addSociety(
+                        identifier,
+                        this.replaceSocietyPhoneNumber(
+                            this.addTagForSocietyMessage(reqObj.data, originalMessageNumber),
+                            '555-SASP'
+                        )
+                    ),
                     '555-FBI': await this.contactsDB.addSociety(
                         identifier,
                         this.replaceSocietyPhoneNumber(
@@ -175,7 +189,7 @@ class _SocietyService {
                     ),
                 };
 
-                [lspd, bcso, fbi]
+                [lspd, bcso, fbi, sasp]
                     .reduce((acc, val) => acc.concat(val), [])
                     .forEach(player => {
                         const data = this.addTagForSocietyMessage(reqObj.data, originalMessageNumber);
@@ -188,7 +202,7 @@ class _SocietyService {
                     });
             }
         } catch (e) {
-            societiesLogger.error(`Error in handleAddSociety, ${e.toString()}`);
+            societiesLogger.error(`Error in handleSendSocietyMessage, ${e.toString()}`);
             resp({ status: 'error', errorMsg: 'DB_ERROR' });
         }
     }
@@ -231,7 +245,7 @@ class _SocietyService {
                 emitNet(SocietyEvents.UPDATE_SOCIETY_MESSAGE_SUCCESS, player.source, societyMessage);
             });
         } catch (e) {
-            societiesLogger.error(`Error in handleAddSociety, ${e.toString()}`);
+            societiesLogger.error(`Error in updateSocietyMessage, ${e.toString()}`);
             resp({ status: 'error', errorMsg: 'DB_ERROR' });
         }
     }
@@ -253,7 +267,7 @@ class _SocietyService {
                 })),
             });
         } catch (e) {
-            societiesLogger.error(`Error in handleAddSociety, ${e.toString()}`);
+            societiesLogger.error(`Error in fetchSocietyMessages, ${e.toString()}`);
             resp({ status: 'error', errorMsg: 'DB_ERROR' });
         }
     }

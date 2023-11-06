@@ -86,6 +86,7 @@ const Notification: FunctionComponent<NotificationProps> = ({ notification, onDe
                 {isAdvancedNotification(notification) && (
                     <div className="flex items-center mb-2">
                         <img
+                            className="w-16"
                             src={
                                 notification.image.startsWith('http')
                                     ? notification.image
@@ -247,6 +248,10 @@ const PoliceNotification: FunctionComponent<PoliceNotificationProps> = ({ notifi
 
         if (notification.logo === 'bcso') {
             image = '/public/images/hud/notification/bcso.webp';
+        }
+
+        if (notification.logo === 'sasp') {
+            image = '/public/images/hud/notification/sasp.webp';
         }
         return image;
     };

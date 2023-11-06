@@ -1,14 +1,12 @@
-import { PlayerService } from '@public/client/player/player.service';
-
 import { On, Once, OnceStep, OnEvent } from '../../core/decorators/event';
 import { Inject } from '../../core/decorators/injectable';
 import { Provider } from '../../core/decorators/provider';
 import { wait } from '../../core/utils';
-import { ClientEvent } from '../../shared/event';
+import { ClientEvent, ServerEvent } from '../../shared/event';
 import { InventoryItem } from '../../shared/item';
 import { PlayerData } from '../../shared/player';
 import { WeaponDrawPosition, Weapons } from '../../shared/weapons/weapon';
-import { ResourceLoader } from '../resources/resource.loader';
+import { ResourceLoader } from '../repository/resource.loader';
 import { WeaponService } from './weapon.service';
 
 @Provider()
@@ -24,9 +22,6 @@ export class WeaponDrawingProvider {
 
     @Inject(WeaponService)
     private weaponService: WeaponService;
-
-    @Inject(PlayerService)
-    private playerService: PlayerService;
 
     private async updateWeaponDrawList(playerItem: Record<string, InventoryItem> | InventoryItem[]) {
         const weaponToDraw = Object.values(playerItem)
@@ -59,9 +54,11 @@ export class WeaponDrawingProvider {
             const object = CreateObject(weapon.model, 1, 1, 1, true, true, false);
             this.weaponAttached[weapon.model] = object;
 
+            const netId = ObjToNet(object);
             SetEntityAsMissionEntity(object, true, true);
             SetEntityCollision(object, false, true);
-            SetNetworkIdCanMigrate(ObjToNet(object), false);
+            SetNetworkIdCanMigrate(netId, false);
+            TriggerServerEvent(ServerEvent.OBJECT_ATTACHED_REGISTER, netId);
             AttachEntityToEntity(
                 object,
                 PlayerPedId(),
@@ -93,6 +90,8 @@ export class WeaponDrawingProvider {
     private async undrawWeapon() {
         Object.values(this.weaponAttached).forEach(weapon => {
             SetEntityAsMissionEntity(weapon, true, true);
+            const netId = ObjToNet(weapon);
+            TriggerServerEvent(ServerEvent.OBJECT_ATTACHED_UNREGISTER, netId);
             DeleteObject(weapon);
         });
         this.weaponAttached = {};
@@ -184,7 +183,7 @@ export class WeaponDrawingProvider {
         });
 
         const weapon = this.weaponService.getCurrentWeapon();
-        const weaponModel = Weapons[usedWeapon.name.toUpperCase()]?.drawPosition?.model;
+        const weaponModel = Weapons[usedWeapon?.name.toUpperCase()]?.drawPosition?.model;
         if (weaponModel) {
             if (this.weaponAttached[weaponModel]) {
                 SetEntityVisible(this.weaponAttached[weaponModel], !weapon, false);

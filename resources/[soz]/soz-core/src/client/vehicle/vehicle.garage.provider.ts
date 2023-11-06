@@ -19,11 +19,11 @@ import { JobService } from '../job/job.service';
 import { Notifier } from '../notifier';
 import { InputService } from '../nui/input.service';
 import { NuiMenu } from '../nui/nui.menu';
+import { ObjectProvider } from '../object/object.provider';
 import { PlayerService } from '../player/player.service';
-import { GarageRepository } from '../resources/garage.repository';
-import { VehicleRepository } from '../resources/vehicle.repository';
+import { GarageRepository } from '../repository/garage.repository';
+import { VehicleRepository } from '../repository/vehicle.repository';
 import { TargetFactory } from '../target/target.factory';
-import { ObjectFactory } from '../world/object.factory';
 import { VehicleService } from './vehicle.service';
 import { VehicleStateService } from './vehicle.state.service';
 
@@ -47,7 +47,7 @@ const BlipConfigMap: Partial<Record<GarageType, Partial<Record<GarageCategory, B
         [GarageCategory.Sea]: { name: 'Port Public', sprite: 356, color: 3 },
     },
     [GarageType.Depot]: {
-        [GarageCategory.Car]: { name: 'Fourrière', sprite: 68, color: 3 },
+        [GarageCategory.All]: { name: 'Fourrière', sprite: 68, color: 3 },
     },
 };
 
@@ -65,8 +65,8 @@ export class VehicleGarageProvider {
     @Inject(VehicleRepository)
     private vehicleRepository: VehicleRepository;
 
-    @Inject(ObjectFactory)
-    private objectFactory: ObjectFactory;
+    @Inject(ObjectProvider)
+    private objectProvider: ObjectProvider;
 
     @Inject(VehicleService)
     private vehicleService: VehicleService;
@@ -144,11 +144,11 @@ export class VehicleGarageProvider {
             }
 
             if (garage.type === GarageType.Depot || garage.category == GarageCategory.Sea) {
-                this.objectFactory.create(
-                    jobGaragePayStation,
-                    [...garage.zone.center, garage.zone.heading] as Vector4,
-                    true
-                );
+                this.objectProvider.createObject({
+                    model: jobGaragePayStation,
+                    position: [...garage.zone.center, garage.zone.heading] as Vector4,
+                    id: `garage_${garageIdentifier}`,
+                });
 
                 if (garage.type === GarageType.Depot) {
                     targets.push({
@@ -164,11 +164,11 @@ export class VehicleGarageProvider {
             }
 
             if (garage.type === GarageType.Job) {
-                this.objectFactory.create(
-                    jobGaragePayStation,
-                    [...garage.zone.center, garage.zone.heading] as Vector4,
-                    true
-                );
+                this.objectProvider.createObject({
+                    model: jobGaragePayStation,
+                    position: [...garage.zone.center, garage.zone.heading] as Vector4,
+                    id: `garage_${garageIdentifier}`,
+                });
 
                 targets.push({
                     label: 'Accéder au parking entreprise',
@@ -181,11 +181,11 @@ export class VehicleGarageProvider {
             }
 
             if (garage.type === GarageType.JobLuxury) {
-                this.objectFactory.create(
-                    jobGaragePayStation,
-                    [...garage.zone.center, garage.zone.heading] as Vector4,
-                    true
-                );
+                this.objectProvider.createObject({
+                    model: jobGaragePayStation,
+                    position: [...garage.zone.center, garage.zone.heading] as Vector4,
+                    id: `garage_${garageIdentifier}`,
+                });
 
                 targets.push({
                     label: 'Accéder au parking entreprise luxe',
@@ -307,7 +307,7 @@ export class VehicleGarageProvider {
 
                         await this.doStoreVehicle(closestPound[0], closestPound[1], entity, intValue, intCost);
                     },
-                    job: { lspd: 0, bcso: 0 },
+                    job: { lspd: 0, bcso: 0, sasp: 0 },
                     blackoutGlobal: true,
                     canInteract: (): boolean => {
                         const player = this.playerService.getPlayer();
@@ -548,7 +548,7 @@ export class VehicleGarageProvider {
         this.nuiMenu.closeMenu();
     }
 
-    private async enterGarage(id: string, garage: Garage) {
+    public async enterGarage(id: string, garage: Garage) {
         const vehicles = await emitRpc<GarageVehicle[]>(RpcServerEvent.VEHICLE_GARAGE_GET_VEHICLES, id, garage);
         if (vehicles === null) {
             return;

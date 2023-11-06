@@ -14,10 +14,12 @@ import { PlayerService } from '../player/player.service';
 import { SoundService } from '../sound.service';
 import { VehicleService } from './vehicle.service';
 
-const THRESHOLD_G_STRENGTH_DEFAULT = 3.5;
+const THRESHOLD_G_STRENGTH_DEFAULT = 9.5;
 const THRESHOLD_G_STRENGTH_VEHICLE_CLASS: { [key in VehicleClass]?: number } = {
     [VehicleClass.Motorcycles]: 7,
 };
+
+const EJECTION_TICK_INTERVAL_SECONDES = 0.1;
 
 @Provider()
 export class VehicleSeatbeltProvider {
@@ -158,7 +160,7 @@ export class VehicleSeatbeltProvider {
         ClearAllPedVehicleForcedSeatUsage(PlayerPedId());
     }
 
-    @Tick(500)
+    @Tick(EJECTION_TICK_INTERVAL_SECONDES * 1000)
     async handleVehicleEjectionAndSeatbelt() {
         const ped = PlayerPedId();
         const vehicle = GetVehiclePedIsIn(ped, false);
@@ -200,8 +202,12 @@ export class VehicleSeatbeltProvider {
             return;
         }
 
-        const acceleration = (vehicleSpeed - this.lastVehicleSpeed) / 0.5;
-        const gStrength = Math.abs(acceleration / 9.81);
+        const acceleration = [
+            (this.lastVehicleVelocity[0] - vehicleVelocity[0]) / EJECTION_TICK_INTERVAL_SECONDES,
+            (this.lastVehicleVelocity[1] - vehicleVelocity[1]) / EJECTION_TICK_INTERVAL_SECONDES,
+            (this.lastVehicleVelocity[2] - vehicleVelocity[2]) / EJECTION_TICK_INTERVAL_SECONDES,
+        ] as Vector3;
+        const gStrength = toVectorNorm(acceleration) / 9.81;
         const vehicleNetworkId = NetworkGetNetworkIdFromEntity(vehicle);
 
         if (gStrength > THRESHOLD_G_STRENGTH_DEFAULT && this.lastVehicleHealth != vehicleHealth) {
@@ -261,7 +267,7 @@ export class VehicleSeatbeltProvider {
             if (!this.isSeatbeltOn) {
                 await this.ejectPlayer(ped, vehicleEjection, velocity);
             } else {
-                const damage = (gStrength * toVectorNorm(velocity)) / 12;
+                const damage = ((gStrength - THRESHOLD_G_STRENGTH_DEFAULT) * toVectorNorm(velocity)) / 30;
                 SetEntityHealth(ped, Math.round(GetEntityHealth(ped) - damage));
 
                 const duration = Math.min((1000 * damage) / 4, 6000);

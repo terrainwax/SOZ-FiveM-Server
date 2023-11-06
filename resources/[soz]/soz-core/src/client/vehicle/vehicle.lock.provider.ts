@@ -46,6 +46,7 @@ const VEHICLE_TRUNK_TYPES = {
     [GetHashKey('brickade')]: 'brickade',
     [GetHashKey('brickade1')]: 'brickade',
     [GetHashKey('trash')]: 'trash',
+    [GetHashKey('tiptruck2')]: 'tiptruck',
 };
 
 type TrunkOpened = {
@@ -314,13 +315,13 @@ export class VehicleLockProvider {
         const center = [
             position[0] + (max[0] + min[0]) / 2,
             position[1] + (max[1] + min[1]) / 2,
-            position[2] + (max[2] + min[2]) / 2,
+            position[2] + min[2],
         ] as Vector3;
 
         const vehicleTrunkZone = new BoxZone(center, max[1] - min[1] + 3.0, max[0] - min[0] + 3.0, {
             heading: GetEntityHeading(vehicle),
-            minZ: center[2] + min[2] - 3.0,
-            maxZ: center[2] + max[2] + 3.0,
+            minZ: center[2],
+            maxZ: center[2] + 6.0,
         });
 
         const pedPosition = GetEntityCoords(ped, false) as Vector3;
@@ -522,6 +523,9 @@ export class VehicleLockProvider {
     public onLockpick(type: string) {
         const coords = GetEntityCoords(PlayerPedId());
         const zoneID = GetNameOfZone(coords[0], coords[1], coords[2]);
+        if (zoneID == 'ISHEIST') {
+            return;
+        }
         const zone = GetLabelText(zoneID);
 
         const messages = [...LockPickAlertMessage.all, ...LockPickAlertMessage[type]];

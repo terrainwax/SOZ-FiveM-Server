@@ -23,13 +23,13 @@ export type KillData = {
 };
 
 export const PHARMACY_PRICES = {
-    tissue: 250,
-    antibiotic: 250,
-    pommade: 250,
-    painkiller: 250,
-    antiacide: 250,
+    tissue: 125,
+    antibiotic: 125,
+    pommade: 125,
+    painkiller: 125,
+    antiacide: 125,
     heal: 400,
-    health_book: 400,
+    health_book: 50,
 };
 
 export const BedLocations: Vector3[] = [
@@ -69,6 +69,7 @@ export const PatientClothes: WardrobeConfig = {
                 [Prop.RightHand]: { Clear: true },
                 [Prop.Helmet]: { Clear: true },
             },
+            GlovesID: 0,
         },
     },
     [joaat('mp_f_freemode_01')]: {
@@ -97,6 +98,7 @@ export const PatientClothes: WardrobeConfig = {
                 [Prop.RightHand]: { Clear: true },
                 [Prop.Helmet]: { Clear: true },
             },
+            GlovesID: 0,
         },
     },
 };

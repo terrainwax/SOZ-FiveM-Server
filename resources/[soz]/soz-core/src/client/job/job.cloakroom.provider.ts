@@ -3,11 +3,14 @@ import { JobType } from '@public/shared/job';
 import { BaunCloakroom } from '@public/shared/job/baun';
 import { NewGarrayCloakroom } from '@public/shared/job/bennys';
 import { CjrCloakroom } from '@public/shared/job/cjr';
+import { DmcCloakroom } from '@public/shared/job/dmc';
+import { FDFCloakroom } from '@public/shared/job/fdf';
 import { FfsCloakroom } from '@public/shared/job/ffs';
 import { FoodCloakroom } from '@public/shared/job/food';
 import { GarbageCloakroom } from '@public/shared/job/garbage';
+import { GouvCloakroom } from '@public/shared/job/gouv';
 import { HAZMAT_OUTFIT_NAME, LsmcCloakroom } from '@public/shared/job/lsmc';
-import { NewsCloakroom } from '@public/shared/job/news';
+import { NewsCloakroom, YouNewsCloakroom } from '@public/shared/job/news';
 import { OilCloakroom } from '@public/shared/job/oil';
 import { PawlCloakroom } from '@public/shared/job/pawl';
 import { StonkCloakroom } from '@public/shared/job/stonk';
@@ -24,18 +27,22 @@ import { PlayerWardrobe } from '../player/player.wardrobe';
 import { ProgressService } from '../progress.service';
 
 const jobStorage: Partial<Record<JobType, WardrobeConfig>> = {
-    upw: UpwCloakroom,
-    taxi: CjrCloakroom,
-    pawl: PawlCloakroom,
-    baun: BaunCloakroom,
-    oil: OilCloakroom,
-    news: NewsCloakroom,
-    garbage: GarbageCloakroom,
-    food: FoodCloakroom,
-    ffs: FfsCloakroom,
-    ['cash-transfer']: StonkCloakroom,
-    bennys: NewGarrayCloakroom,
-    lsmc: LsmcCloakroom,
+    [JobType.Upw]: UpwCloakroom,
+    [JobType.Taxi]: CjrCloakroom,
+    [JobType.Pawl]: PawlCloakroom,
+    [JobType.Baun]: BaunCloakroom,
+    [JobType.Oil]: OilCloakroom,
+    [JobType.News]: NewsCloakroom,
+    [JobType.YouNews]: YouNewsCloakroom,
+    [JobType.Garbage]: GarbageCloakroom,
+    [JobType.Food]: FoodCloakroom,
+    [JobType.Ffs]: FfsCloakroom,
+    [JobType.CashTransfer]: StonkCloakroom,
+    [JobType.Bennys]: NewGarrayCloakroom,
+    [JobType.LSMC]: LsmcCloakroom,
+    [JobType.Gouv]: GouvCloakroom,
+    [JobType.FDF]: FDFCloakroom,
+    [JobType.DMC]: DmcCloakroom,
 };
 
 @Provider()
@@ -73,6 +80,10 @@ export class JobCloakroomProvider {
     }
 
     public async openCloakroom(storageIdToSave: string, config: WardrobeConfig, customLabel?: string) {
+        if (!config) {
+            return;
+        }
+
         const outfitSelection = await this.playerWardrobe.selectOutfit(config, 'Tenue civile', customLabel);
 
         if (outfitSelection.canceled) {

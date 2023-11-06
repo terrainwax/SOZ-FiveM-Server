@@ -1,4 +1,4 @@
-import { ChatAltIcon } from '@heroicons/react/outline';
+import { ChatAltIcon, PaperAirplaneIcon } from '@heroicons/react/outline';
 import {
     AdjustmentsIcon,
     BellIcon,
@@ -55,7 +55,7 @@ export const SettingsHome = () => {
     const [openMenu, closeMenu, ContextMenu, isMenuOpen] = useContextMenu();
 
     const canShowDynamicAlerts = (): boolean => {
-        return ['555-LSPD', '555-BCSO', '555-FBI'].some(allowedNumber => allowedNumber === societyNumber);
+        return ['555-LSPD', '555-BCSO', '555-SASP', '555-FBI'].some(allowedNumber => allowedNumber === societyNumber);
     };
 
     const handleSettingChange = (key: string | number, value: any) => {
@@ -168,6 +168,13 @@ export const SettingsHome = () => {
                         color="bg-[#ac5de8]"
                         value={config.handsFree}
                         onClick={curr => handleSettingChange('handsFree', !curr)}
+                    />
+                    <SettingSwitch
+                        label={t('SETTINGS.OPTIONS.PLANE_MODE')}
+                        icon={<PaperAirplaneIcon />}
+                        color="bg-[#FF6633]"
+                        value={config.planeMode}
+                        onClick={curr => handleSettingChange('planeMode', !curr)}
                     />
                 </List>
                 {canShowDynamicAlerts() && (

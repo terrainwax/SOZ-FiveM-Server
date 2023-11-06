@@ -17,8 +17,7 @@ import {
 } from '../../shared/vehicle/vehicle';
 import { Notifier } from '../notifier';
 import { PlayerService } from '../player/player.service';
-import { ResourceLoader } from '../resources/resource.loader';
-import { VehicleConditionProvider } from './vehicle.condition.provider';
+import { ResourceLoader } from '../repository/resource.loader';
 import { VehicleService } from './vehicle.service';
 import { VehicleStateService } from './vehicle.state.service';
 
@@ -163,6 +162,7 @@ export class VehicleSpawnProvider {
         }
 
         SetEntityAsMissionEntity(vehicle, true, true);
+        SetEntityCleanupByEngine(vehicle, false);
 
         this.resourceLoader.unloadModel(hash);
         let attempts = 0;
@@ -206,6 +206,13 @@ export class VehicleSpawnProvider {
 
         await this.doSpawn(vehicle, networkId, vehicleSpawn, volatile, condition);
         this.lastVehicleSpawn = vehicle;
+
+        if (GetVehicleClass(vehicle) == VehicleClass.Boats) {
+            SetVehicleEngineOn(vehicle, false, false, true);
+
+            SetBoatAnchor(vehicle, true);
+            SetBoatFrozenWhenAnchored(vehicle, true);
+        }
 
         return networkId;
     }
@@ -319,7 +326,6 @@ export class VehicleSpawnProvider {
             this.vehicleService.applyVehicleConfiguration(vehicle, vehicleSpawn.modification);
         }
 
-        VehicleConditionProvider.updateHealthReason.set(vehicle, 'apply condition from spawn');
         this.vehicleService.applyVehicleCondition(vehicle, condition, condition);
     }
 

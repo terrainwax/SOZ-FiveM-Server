@@ -7,6 +7,7 @@ import { uuidv4, wait } from '@core/utils';
 import { PlayerVehicle } from '@prisma/client';
 import { DealershipConfig } from '@public/config/dealership';
 import { GarageRepository } from '@public/server/repository/garage.repository';
+import { JobType } from '@public/shared/job';
 import { BoxZone } from '@public/shared/polyzone/box.zone';
 import { MultiZone } from '@public/shared/polyzone/multi.zone';
 import { RpcClientEvent } from '@public/shared/rpc';
@@ -18,6 +19,7 @@ import { getDefaultVehicleConfiguration, VehicleColor, VehicleConfiguration } fr
 import {
     getDefaultVehicleCondition,
     getDefaultVehicleVolatileState,
+    VehicleCategory,
     VehicleCondition,
     VehicleSpawn,
     VehicleType,
@@ -89,6 +91,12 @@ const VEHICLE_HAS_RADIO = [
     'bcsomanchez',
     'predator',
     'sasp1',
+    'xls2',
+    'schafter6',
+    'tractor2',
+    'benson',
+    'tiptruck2',
+    'rubble',
 ];
 
 const DISALLOWED_VEHICLE_MODELS = { [GetHashKey('dune2')]: true };
@@ -105,6 +113,14 @@ const lsmcParking = new BoxZone([427.27, -1325.76, 39.02], 78.8, 111.0, {
     minZ: 29.02,
     maxZ: 48.22,
 });
+
+const lsmcMlo = new BoxZone([347.75, -1412.87, 29.43], 92.8, 87.0, {
+    heading: 228.37,
+    minZ: 28.43,
+    maxZ: 70.43,
+});
+
+const VEHICLE_INVERTED_SPAWN = ['raketrailer'];
 
 @Provider()
 export class VehicleSpawner {
@@ -142,6 +158,7 @@ export class VehicleSpawner {
 
         noSpawnZones.push(frontBCSO);
         noSpawnZones.push(lsmcParking);
+        noSpawnZones.push(lsmcMlo);
 
         this.noSpawnZone = new MultiZone<BoxZone>(noSpawnZones);
     }
@@ -269,6 +286,11 @@ export class VehicleSpawner {
             open: false,
             owner: player.citizenid,
             defaultOwner: vehicle.citizenid,
+            job: vehicle.job as JobType,
+            class: vehicle.category as VehicleCategory,
+            locatorEndJam: this.vehicleStateService.getJamLocator(vehicle.plate),
+            model: vehicle.vehicle,
+            label: vehicle.label,
         };
 
         const hash = parseInt(vehicle.hash || '0', 10);
@@ -379,6 +401,10 @@ export class VehicleSpawner {
     ): Promise<number | null> {
         const volatile = this.getSpawnVolatileState(vehicle, volatileState);
 
+        if (VEHICLE_INVERTED_SPAWN.includes(vehicle.model)) {
+            vehicle.position[3] = (vehicle.position[3] + 180) % 360;
+        }
+
         try {
             const [netId, entityId] = await this.spawnVehicleFromClient(player, vehicle, volatile, condition);
 
@@ -397,7 +423,14 @@ export class VehicleSpawner {
                 return null;
             }
 
-            this.vehicleStateService.register(netId, player, vehicle.position, volatile, condition);
+            this.vehicleStateService.register(
+                netId,
+                player,
+                vehicle.position,
+                volatile,
+                condition,
+                vehicle.modification || getDefaultVehicleConfiguration()
+            );
 
             return netId;
         } catch (e) {

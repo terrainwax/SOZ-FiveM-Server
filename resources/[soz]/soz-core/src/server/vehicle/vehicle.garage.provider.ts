@@ -9,7 +9,7 @@ import { Rpc } from '../../core/decorators/rpc';
 import { Logger } from '../../core/logger';
 import { ServerEvent } from '../../shared/event';
 import { joaat } from '../../shared/joaat';
-import { JobPermission, JobType } from '../../shared/job';
+import { FDO, JobPermission, JobType } from '../../shared/job';
 import { PlayerData } from '../../shared/player';
 import { toVector3Object, Vector3, Vector4 } from '../../shared/polyzone/vector';
 import { getRandomItem } from '../../shared/random';
@@ -44,7 +44,7 @@ const ALLOWED_VEHICLE_TYPE: Record<GarageCategory, string[]> = {
     [GarageCategory.Car]: ['automobile', 'bike', 'trailer'],
     [GarageCategory.Air]: ['heli', 'plane'],
     [GarageCategory.Sea]: ['boat', 'submarine'],
-    [GarageCategory.All]: ['automobile', 'bike', 'plane', 'heli'],
+    [GarageCategory.All]: ['automobile', 'bike', 'plane', 'heli', 'boat'],
 };
 
 const FORMAT_LOCALIZED: Intl.DateTimeFormatOptions = {
@@ -247,7 +247,7 @@ export class VehicleGarageProvider {
             return HouseGarageLimits[apartmentTier] ?? 0;
         }
 
-        return 38;
+        return 60;
     }
 
     @Rpc(RpcServerEvent.VEHICLE_GARAGE_GET_FREE_PLACES)
@@ -319,7 +319,14 @@ export class VehicleGarageProvider {
 
     @Rpc(RpcServerEvent.VEHICLE_GARAGE_GET_VEHICLES)
     public async getGarageVehicles(source: number, id: string): Promise<GarageVehicle[]> {
-        const garage = (await this.garageRepository.get())[id];
+        const garage =
+            (await this.garageRepository.get())[id] ||
+            ({
+                category: GarageCategory.All,
+                id: id,
+                name: id,
+                type: GarageType.Public,
+            } as Garage);
 
         const player = this.playerService.getPlayer(source);
 
@@ -382,7 +389,7 @@ export class VehicleGarageProvider {
 
             const permission = this.getPermissionForGarage(garage.type, garage.category);
 
-            if (permission && this.jobService.hasPermission(player, player.job.id, permission)) {
+            if (permission && this.jobService.hasPermission(player, player.job.id, permission) && player.job.onduty) {
                 or.push({ job: player.job.id });
             }
 
@@ -498,13 +505,23 @@ export class VehicleGarageProvider {
             )
         ) {
             return Err("vous n'avez pas la permission de ranger un véhicule entreprise dans un garage publique/privé");
+        } else if (
+            (garage.type === GarageType.Private || garage.type === GarageType.Public) &&
+            vehicle.job &&
+            this.jobService.hasPermission(
+                player,
+                player.job.id,
+                this.getPermissionForGarage(garage.type, garage.category)
+            ) &&
+            !player.job.onduty
+        ) {
+            return Err("vous n'êtes pas en service pour ranger un véhicule entrprise");
         } else if (garage.type === GarageType.Job && garage.job !== player.job.id) {
             return Err("vous n'avez pas accès à ce garage entreprise");
         } else if (
             garage.type === GarageType.Depot &&
             player.job.id !== JobType.Bennys &&
-            player.job.id !== JobType.LSPD &&
-            player.job.id !== JobType.BCSO
+            !FDO.includes(player.job.id)
         ) {
             return Err("vous n'avez pas accès à ce garage fourrière");
         } else if (
@@ -613,7 +630,7 @@ export class VehicleGarageProvider {
 
         const freePlaces = await this.getFreePlaces(source, id, garage);
 
-        if (freePlaces !== null && freePlaces <= 0) {
+        if (freePlaces !== null && freePlaces <= 0 && id != `property_cayo_villa`) {
             this.notifier.notify(source, 'Ce garage est plein.', 'error');
             return;
         }
@@ -622,7 +639,7 @@ export class VehicleGarageProvider {
         if (garage.type === GarageType.Depot) {
             if (player.job.id == JobType.Bennys) {
                 state = PlayerVehicleState.InPound;
-            } else if (player.job.id == JobType.LSPD || player.job.id == JobType.BCSO) {
+            } else if (FDO.includes(player.job.id)) {
                 state = PlayerVehicleState.InFedPound;
             }
         }
@@ -749,7 +766,8 @@ export class VehicleGarageProvider {
                             garage.type === GarageType.Public ||
                             garage.type === GarageType.Depot) &&
                         (playerVehicle.job !== player.job.id ||
-                            !this.jobService.hasPermission(player, player.job.id, permission))
+                            !this.jobService.hasPermission(player, player.job.id, permission) ||
+                            !player.job.onduty)
                     ) {
                         this.notifier.notify(source, "Vous n'avez pas l'autorisation de sortir ce véhicule.", 'error');
 
@@ -1009,8 +1027,8 @@ export class VehicleGarageProvider {
                 });
 
                 if (appartements.length == 0) {
+                    // not owner or roomate, see owns vehicle
                     citizenIds.add(player.citizenid);
-                    this.logger.error('no appartements found for property', propertyId);
                 }
 
                 for (const appartement of appartements) {

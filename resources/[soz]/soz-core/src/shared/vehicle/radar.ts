@@ -6,6 +6,7 @@ export type Radar = {
     zone: CylinderZone;
     isOnline: boolean;
     speed: number;
-    entity?: number;
+    objectId?: string;
     disableTime?: number;
+    destroyed?: boolean;
 };

@@ -10,6 +10,7 @@ import { ChainMiddlewareTickServerFactory } from './core/middleware/middleware.t
 import { AdminModule } from './server/admin/admin.module';
 import { AfkModule } from './server/afk/afk.module';
 import { ApiModule } from './server/api/api.module';
+import { CraftModule } from './server/craft/craft.module';
 import { DatabaseModule } from './server/database/database.module';
 import { DrivingSchoolModule } from './server/driving-school/ds.module';
 import { FieldModule } from './server/farm/field.module';
@@ -17,18 +18,24 @@ import { InventoryModule } from './server/inventory/inventory.module';
 import { ItemModule } from './server/item/item.module';
 import { BaunModule } from './server/job/baun/baun.module';
 import { BennysModule } from './server/job/bennys/bennys.module';
+import { DMCModule } from './server/job/dmc/dmc.module';
+import { FDFModule } from './server/job/fdf/fdf.module';
 import { FightForStyleModule } from './server/job/ffs/ffs.module';
 import { FoodModule } from './server/job/food/food.module';
 import { JobModule } from './server/job/job.module';
 import { LSMCModule } from './server/job/lsmc/lsmc.module';
 import { MdrModule } from './server/job/mdr/mdr.module';
+import { NewsModule } from './server/job/news/news.module';
 import { OilModule } from './server/job/oil/oil.module';
+import { PawlModule } from './server/job/pawl/pawl.module';
 import { PoliceModule } from './server/job/police/police.module';
 import { StonkModule } from './server/job/stonk/stonk.module';
 import { TaxiModule } from './server/job/taxi/taxi.module';
 import { UpwModule } from './server/job/upw/upw.module';
 import { MonitorModule } from './server/monitor/monitor.module';
+import { ObjectModule } from './server/object/object.module';
 import { PlayerModule } from './server/player/player.module';
+import { PropsModule } from './server/props/props.module';
 import { RaceModule } from './server/race/race.module';
 import { RebootModule } from './server/reboot/reboot.module';
 import { RepositoryModule } from './server/repository/repository.module';
@@ -56,6 +63,7 @@ async function bootstrap() {
         DatabaseModule,
         RepositoryModule,
         ApiModule,
+        ObjectModule,
         WeatherModule,
         PlayerModule,
         ItemModule,
@@ -77,6 +85,7 @@ async function bootstrap() {
         StoryModule,
         AfkModule,
         OilModule,
+        PawlModule,
         WeaponModule,
         InventoryModule,
         DrivingSchoolModule,
@@ -86,6 +95,11 @@ async function bootstrap() {
         UpwModule,
         TaxiModule,
         RaceModule,
+        PropsModule,
+        CraftModule,
+        FDFModule,
+        NewsModule,
+        DMCModule,
         ...PrivateModules
     );
 

@@ -12,6 +12,7 @@ export enum JobType {
     Taxi = 'taxi',
     Food = 'food',
     News = 'news',
+    YouNews = 'you-news',
     Garbage = 'garbage',
     Oil = 'oil',
     CashTransfer = 'cash-transfer',
@@ -22,7 +23,15 @@ export enum JobType {
     Baun = 'baun',
     FBI = 'fbi',
     MDR = 'mdr',
+    Gouv = 'gouv',
+    FDF = 'fdf',
+    SASP = 'sasp',
+    DMC = 'dmc',
 }
+
+export const BASE_FDO = [JobType.LSPD, JobType.BCSO];
+export const FDO = [JobType.FBI, JobType.LSPD, JobType.BCSO, JobType.SASP];
+export const FDO_NO_FBI = [JobType.LSPD, JobType.BCSO, JobType.SASP];
 
 export enum JobPermission {
     Enrollment = 'enrollment',
@@ -40,6 +49,7 @@ export enum JobPermission {
     SocietyPrivatePort = 'society-private-port',
     SocietyViewCompanyPanel = 'society-view-company-panel',
     NewsManageArticle = 'manage-article',
+    NewsManageBillboards = 'manage-billboards',
     CashTransfer_CollectBags = 'collect-bags',
     CashTransfer_CollectSecure = 'collect-secure',
     CashTransfer_ResaleBags = 'resale-bags',
@@ -52,6 +62,9 @@ export enum JobPermission {
     Investigation = 'investigation',
     ManageInvestigation = 'investigation-manage',
     InvestigationLawyer = 'investigation-lawyer',
+    ManageCertification = 'certification-manage',
+    AssignCertification = 'certification-agent',
+    ManageRoster = 'roster-manage',
     BaunHarvest = 'harvest',
     BaunRestock = 'restock',
     BaunCraft = 'craft',
@@ -75,13 +88,14 @@ export const JobLabel: Record<JobType, string> = {
     [JobType.Adsl]: 'ADSL',
     [JobType.Delivery]: 'Fougère Prime',
     [JobType.Religious]: 'InfoChat',
-    [JobType.Scrapper]: 'DeMetal Company',
+    [JobType.Scrapper]: 'OldMetal',
     [JobType.LSPD]: 'Los Santos Police Department',
     [JobType.BCSO]: 'Blaine County Sheriff Office',
     [JobType.LSMC]: 'Los Santos Medical Center',
     [JobType.Taxi]: 'Carl Jr Services',
     [JobType.Food]: 'Château Marius',
     [JobType.News]: 'Twitch News',
+    [JobType.YouNews]: 'You News',
     [JobType.Garbage]: 'BlueBird',
     [JobType.Oil]: 'Michel Transport Petrol',
     [JobType.CashTransfer]: 'STONK Security',
@@ -92,6 +106,10 @@ export const JobLabel: Record<JobType, string> = {
     [JobType.Baun]: 'Bahama Unicorn',
     [JobType.FBI]: 'Federal Bureau of Investigation',
     [JobType.MDR]: 'Mandatory',
+    [JobType.Gouv]: 'Gouvernement',
+    [JobType.FDF]: 'Ferme de Fou',
+    [JobType.SASP]: 'San Andreas State Police',
+    [JobType.DMC]: 'DeMetal Company',
 };
 
 export type JobPermissionData = {

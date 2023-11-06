@@ -66,6 +66,7 @@ export class WeaponProvider {
 
         SetWeaponDamageModifier(WeaponName.UNARMED, 0.5);
         SetWeaponDamageModifier(WeaponName.BAT, 0.2);
+        SetWeaponDamageModifier(WeaponName.PICKAXE, 0.2);
         SetWeaponDamageModifier(WeaponName.CROWBAR, 0.2);
         SetWeaponDamageModifier(WeaponName.GOLFCLUB, 0.2);
         SetWeaponDamageModifier(WeaponName.HAMMER, 0.2);
@@ -114,6 +115,11 @@ export class WeaponProvider {
         await this.onUseAmmoLoop(ammoName);
 
         this.playerService.updateState({ isInventoryBusy: false });
+    }
+
+    @OnEvent(ClientEvent.WEAPON_CLEAR_WEAPON)
+    async onClearWeapon() {
+        await this.weapon.clear();
     }
 
     private async onUseAmmoLoop(ammoName: string) {
@@ -211,13 +217,13 @@ export class WeaponProvider {
             !messageExclude.includes(GetHashKey(weapon.name)) &&
             !messageExcludeGroups.includes(weaponGroup) &&
             Math.random() < 0.6 &&
-            Date.now() - this.lastPoliceCall > 120000
+            Date.now() - this.lastPoliceCall > 60000
         ) {
             const coords = GetEntityCoords(player);
 
             const zoneID = GetNameOfZone(coords[0], coords[1], coords[2]);
 
-            if ('ARMYB' != zoneID) {
+            if ('ARMYB' != zoneID && 'ISHEIST' != zoneID) {
                 const zone = GetLabelText(zoneID);
                 const [street, street2] = GetStreetNameAtCoord(coords[0], coords[1], coords[2]);
 
@@ -232,15 +238,10 @@ export class WeaponProvider {
 
                 const message = getRandomItem(GunShotMessage);
 
-                TriggerServerEvent('phone:sendSocietyMessage', 'phone:sendSocietyMessage:' + uuidv4(), {
-                    anonymous: true,
-                    number: '555-POLICE',
-                    message: `${zone}: ${message.replace('${0}', name)}`,
-                    htmlMessage: `${zone}: ${message.replace('${0}', nameHtml)}`,
-                    position: true,
-                    info: { type: 'shooting' },
-                    overrideIdentifier: 'System',
-                });
+                const alertMessage = `${zone}: ${message.replace('${0}', name)}`;
+                const htmlMessage = `${zone}: ${message.replace('${0}', nameHtml)}`;
+
+                TriggerServerEvent(ServerEvent.WEAPON_SHOOTING_ALERT, alertMessage, htmlMessage, zoneID);
             }
         }
         await this.weapon.recoil();
@@ -248,7 +249,11 @@ export class WeaponProvider {
 
     @OnEvent(ClientEvent.WEAPON_EXPLOSION)
     async onExplosion(x: number, y: number, z: number) {
-        const zone = GetLabelText(GetNameOfZone(x, y, z));
+        const zoneID = GetNameOfZone(x, y, z);
+        if (zoneID == 'ISHEIST') {
+            return;
+        }
+        const zone = GetLabelText(zoneID);
 
         const message = getRandomItem(ExplosionMessage);
 

@@ -60,7 +60,8 @@ export type ItemType =
     | 'fishing_bait'
     | 'crate'
     | 'fish'
-    | 'fishing_garbage';
+    | 'fishing_garbage'
+    | 'tool';
 
 export type MealMetadata = {
         name: string;
@@ -92,6 +93,7 @@ export type InventoryItemMetadata = {
     crafted?: boolean;
     crateElements?: MealMetadata[];
     bait?: BaitMetadata;
+    fuel?: number;
     weight?: number;
     length?:number;
 };

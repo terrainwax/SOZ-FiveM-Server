@@ -2,9 +2,13 @@ import { OnEvent } from '../../core/decorators/event';
 import { Inject } from '../../core/decorators/injectable';
 import { Provider } from '../../core/decorators/provider';
 import { Tick, TickInterval } from '../../core/decorators/tick';
+import { emitRpc } from '../../core/rpc';
 import { ClientEvent, ServerEvent } from '../../shared/event';
 import { getDistance, Vector3 } from '../../shared/polyzone/vector';
-import { VehicleCondition, VehicleVolatileState } from '../../shared/vehicle/vehicle';
+import { getRandomFloat } from '../../shared/random';
+import { RpcServerEvent } from '../../shared/rpc';
+import { VehicleConfiguration } from '../../shared/vehicle/modification';
+import { getDefaultVehicleCondition, VehicleCondition, VehicleVolatileState } from '../../shared/vehicle/vehicle';
 import { NuiMenu } from '../nui/nui.menu';
 import { TargetFactory } from '../target/target.factory';
 import { VehicleFuelProvider } from './vehicle.fuel.provider';
@@ -41,10 +45,13 @@ export class VehicleConditionProvider {
 
     private currentVehiclePositionForTemporaryTire: CurrentVehiclePosition | null = null;
 
-    public static updateHealthReason = new Map<number, string>();
-
     @OnEvent(ClientEvent.VEHICLE_CONDITION_REGISTER)
-    private registerVehicleCondition(vehicleNetworkId: number, condition: VehicleCondition): void {
+    private async registerVehicleCondition(
+        vehicleNetworkId: number,
+        condition: VehicleCondition,
+        configuration: VehicleConfiguration,
+        useExistingState: boolean
+    ) {
         if (!NetworkDoesNetworkIdExist(vehicleNetworkId)) {
             return;
         }
@@ -61,7 +68,33 @@ export class VehicleConditionProvider {
             return;
         }
 
-        this.currentVehicleCondition.set(vehicleNetworkId, condition);
+        if (!useExistingState) {
+            this.currentVehicleCondition.set(vehicleNetworkId, condition);
+            this.vehicleService.applyVehicleCondition(entityId, condition, condition);
+            this.vehicleService.applyVehicleConfigurationPerformance(entityId, configuration);
+        } else {
+            // This is trigger when a new vehicle is registered without a spawn, like the vehicle was forced by a player
+            const state = await this.vehicleStateService.getVehicleState(entityId);
+            const currentVehicleCondition: VehicleCondition = {
+                ...getDefaultVehicleCondition(),
+                ...this.vehicleService.getClientVehicleCondition(entityId, state),
+                oilLevel: getRandomFloat(0, 100),
+                fuelLevel: getRandomFloat(0, 100),
+            };
+            const currentVehicleConfiguration = this.vehicleService.getClientVehicleConfiguration(entityId);
+
+            this.currentVehicleCondition.set(vehicleNetworkId, currentVehicleCondition);
+            TriggerServerEvent(ServerEvent.VEHICLE_UPDATE_CONDITION_FROM_OWNER, vehicleNetworkId, condition);
+
+            await emitRpc<VehicleConfiguration>(
+                RpcServerEvent.VEHICLE_CUSTOM_SET_MODS,
+                vehicleNetworkId,
+                currentVehicleConfiguration,
+                currentVehicleConfiguration,
+                null,
+                false
+            );
+        }
     }
 
     @OnEvent(ClientEvent.VEHICLE_CONDITION_UNREGISTER)
@@ -91,6 +124,8 @@ export class VehicleConditionProvider {
         // loop through all vehicles we have to check
         for (const [vehicleNetworkId, currentCondition] of this.currentVehicleCondition) {
             if (!NetworkDoesNetworkIdExist(vehicleNetworkId)) {
+                this.currentVehicleCondition.delete(vehicleNetworkId);
+
                 continue;
             }
 
@@ -98,11 +133,15 @@ export class VehicleConditionProvider {
 
             // cannot check a vehicle that does not exist
             if (!entityId) {
+                this.currentVehicleCondition.delete(vehicleNetworkId);
+
                 continue;
             }
 
             // cannot check a vehicle where we are not the owner
             if (!NetworkHasControlOfEntity(entityId)) {
+                this.currentVehicleCondition.delete(vehicleNetworkId);
+
                 continue;
             }
 
@@ -116,20 +155,8 @@ export class VehicleConditionProvider {
             };
 
             if (Object.keys(condition).length > 0) {
-                let reason = null;
-
-                if (condition.bodyHealth >= 999.9) {
-                    reason = VehicleConditionProvider.updateHealthReason.get(entityId) || 'unknown';
-                    VehicleConditionProvider.updateHealthReason.delete(entityId);
-                }
-
                 // if not empty
-                TriggerServerEvent(
-                    ServerEvent.VEHICLE_UPDATE_CONDITION_FROM_OWNER,
-                    vehicleNetworkId,
-                    condition,
-                    reason
-                );
+                TriggerServerEvent(ServerEvent.VEHICLE_UPDATE_CONDITION_FROM_OWNER, vehicleNetworkId, condition);
 
                 this.currentVehicleCondition.set(vehicleNetworkId, {
                     ...currentCondition,
@@ -167,7 +194,7 @@ export class VehicleConditionProvider {
     }
 
     @OnEvent(ClientEvent.VEHICLE_CONDITION_APPLY)
-    private async applyVehicleCondition(
+    private applyVehicleCondition(
         vehicleNetworkId: number,
         condition: Partial<VehicleCondition>,
         fullCondition: VehicleCondition
@@ -197,7 +224,6 @@ export class VehicleConditionProvider {
 
         this.currentVehicleCondition.set(vehicleNetworkId, newCondition);
         this.vehicleService.applyVehicleCondition(entityId, condition, newCondition);
-        VehicleConditionProvider.updateHealthReason.set(entityId, 'apply condition from server');
     }
 
     @OnEvent(ClientEvent.VEHICLE_CONDITION_SYNC)
@@ -223,7 +249,6 @@ export class VehicleConditionProvider {
         }
 
         this.vehicleService.applyVehicleCondition(entityId, condition, fullCondition);
-        VehicleConditionProvider.updateHealthReason.set(entityId, 'apply condition from server when not owner');
     }
 
     @Tick(500)

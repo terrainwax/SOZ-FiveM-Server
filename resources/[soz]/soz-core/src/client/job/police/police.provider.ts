@@ -1,14 +1,14 @@
 import { InventoryManager } from '@public/client/inventory/inventory.manager';
 import { NuiDispatch } from '@public/client/nui/nui.dispatch';
 import { PlayerService } from '@public/client/player/player.service';
-import { ResourceLoader } from '@public/client/resources/resource.loader';
+import { ResourceLoader } from '@public/client/repository/resource.loader';
 import { On, OnEvent } from '@public/core/decorators/event';
 import { Inject } from '@public/core/decorators/injectable';
 import { Provider } from '@public/core/decorators/provider';
 import { emitRpc } from '@public/core/rpc';
 import { wait } from '@public/core/utils';
 import { ClientEvent, ServerEvent } from '@public/shared/event';
-import { JobType } from '@public/shared/job';
+import { FDO } from '@public/shared/job';
 import { BoxZone } from '@public/shared/polyzone/box.zone';
 import { rad, Vector3 } from '@public/shared/polyzone/vector';
 import { RpcServerEvent } from '@public/shared/rpc';
@@ -16,7 +16,6 @@ import { RpcServerEvent } from '@public/shared/rpc';
 import { AnimationStopReason } from '../../../shared/animation';
 import { AnimationService } from '../../animation/animation.service';
 
-const AllowedJob = [JobType.FBI, JobType.BCSO, JobType.LSPD];
 const WEAPON_DIGISCANNER = -38085395;
 const RadarRange = 40;
 
@@ -59,7 +58,7 @@ export class PoliceProvider {
                 return;
             }
 
-            if (player && AllowedJob.includes(player.job.id)) {
+            if (player && FDO.includes(player.job.id)) {
                 this.takeDownFrontPlayer(playerPed);
             }
         });
@@ -234,6 +233,11 @@ export class PoliceProvider {
             true,
             true
         );
+
+        const netId = ObjToNet(object);
+        SetNetworkIdCanMigrate(netId, false);
+        TriggerServerEvent(ServerEvent.OBJECT_ATTACHED_REGISTER, netId);
+
         SetEntityAsMissionEntity(object, true, true);
         AttachEntityToEntity(
             object,
@@ -290,6 +294,7 @@ export class PoliceProvider {
 
         animDuration = GetAnimDuration('amb@code_human_in_car_mp_actions@first_person@smoke@std@rps@base', 'exit');
         await wait(animDuration * 1000);
+        TriggerServerEvent(ServerEvent.OBJECT_ATTACHED_UNREGISTER, ObjToNet(object));
         DeleteEntity(object);
     }
 }

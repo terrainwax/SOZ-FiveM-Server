@@ -3,10 +3,10 @@ import { Race } from '@public/shared/race';
 import { Inject, Injectable } from '../../core/decorators/injectable';
 import { PrismaService } from '../database/prisma.service';
 import { PlayerService } from '../player/player.service';
-import { Repository } from './repository';
+import { RepositoryLegacy } from './repository';
 
 @Injectable()
-export class RaceRepository extends Repository<Record<number, Race>> {
+export class RaceRepository extends RepositoryLegacy<Record<number, Race>> {
     @Inject(PrismaService)
     private prismaService: PrismaService;
 
@@ -27,6 +27,8 @@ export class RaceRepository extends Repository<Record<number, Race>> {
                 checkpoints: JSON.parse(line.checkpoints),
                 enabled: line.enabled,
                 fps: line.fps,
+                garageLocation: line.garage && JSON.parse(line.garage),
+                vehicleConfiguration: line.configuration && JSON.parse(line.configuration),
             } as Race;
         }
 

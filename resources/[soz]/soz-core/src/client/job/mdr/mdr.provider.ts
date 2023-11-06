@@ -2,29 +2,20 @@ import { Once, OnceStep, OnEvent, OnNuiEvent } from '@core/decorators/event';
 import { Inject } from '@core/decorators/injectable';
 import { Provider } from '@core/decorators/provider';
 import { Notifier } from '@public/client/notifier';
-import { ResourceLoader } from '@public/client/resources/resource.loader';
+import { ResourceLoader } from '@public/client/repository/resource.loader';
 import { VehicleRadarProvider } from '@public/client/vehicle/vehicle.radar.provider';
 import { ClientEvent, NuiEvent, ServerEvent } from '@public/shared/event';
 import { JobPermission, JobType } from '@public/shared/job';
 import { MenuType } from '@public/shared/nui/menu';
 
 import { BlipFactory } from '../../blip';
-import { InventoryManager } from '../../inventory/inventory.manager';
-import { ItemService } from '../../item/item.service';
 import { NuiMenu } from '../../nui/nui.menu';
 import { PlayerService } from '../../player/player.service';
 import { TargetFactory } from '../../target/target.factory';
 import { JobPermissionService } from '../job.permission.service';
-import { JobService } from '../job.service';
 
 @Provider()
 export class MandatoryProvider {
-    @Inject(InventoryManager)
-    private inventoryManager: InventoryManager;
-
-    @Inject(ItemService)
-    private itemService: ItemService;
-
     @Inject(NuiMenu)
     private nuiMenu: NuiMenu;
 
@@ -49,9 +40,6 @@ export class MandatoryProvider {
     @Inject(JobPermissionService)
     private jobPermissionService: JobPermissionService;
 
-    @Inject(JobService)
-    private jobService: JobService;
-
     private state = {
         radar: false,
     };
@@ -59,54 +47,6 @@ export class MandatoryProvider {
     @Once(OnceStep.PlayerLoaded)
     public setupMdrJob() {
         this.createBlips();
-
-        this.targetFactory.createForBoxZone(
-            'mdr:duty',
-            {
-                center: [-553.85, -185.33, 38.22],
-                length: 1.0,
-                width: 1.0,
-                minZ: 37.22,
-                maxZ: 40.22,
-            },
-            [
-                {
-                    type: 'server',
-                    event: 'QBCore:ToggleDuty',
-                    icon: 'fas fa-sign-in-alt',
-                    label: 'Prise de service',
-                    canInteract: () => {
-                        return !this.playerService.isOnDuty();
-                    },
-                    job: JobType.MDR,
-                },
-                {
-                    type: 'server',
-                    event: 'QBCore:ToggleDuty',
-                    icon: 'fas fa-sign-in-alt',
-                    label: 'Fin de service',
-                    canInteract: () => {
-                        return this.playerService.isOnDuty();
-                    },
-                    job: JobType.MDR,
-                },
-                {
-                    icon: 'fas fa-users',
-                    label: 'Employé(e)s en service',
-                    action: () => {
-                        TriggerServerEvent('QBCore:GetEmployOnDuty');
-                    },
-                    canInteract: () => {
-                        const player = this.playerService.getPlayer();
-                        return (
-                            this.playerService.isOnDuty() &&
-                            this.jobService.hasPermission(player.job.id, JobPermission.OnDutyView)
-                        );
-                    },
-                    job: JobType.MDR,
-                },
-            ]
-        );
 
         this.targetFactory.createForBoxZone(
             'mdr:wash',

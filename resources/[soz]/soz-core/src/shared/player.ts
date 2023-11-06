@@ -4,6 +4,7 @@ import { Talent } from '@private/shared/talent';
 
 import { ClothConfig } from './cloth';
 import { Disease, Organ } from './disease';
+import { DrivingSchoolLicenseType } from './driving-school';
 import { InventoryItem } from './item';
 import { JobType } from './job';
 import { Halloween2022 } from './story/halloween2022';
@@ -18,6 +19,7 @@ export type QBCorePlayer = {
         SetClothConfig: (config: ClothConfig, skipApply: boolean) => void;
         GetMoney: (type: 'money' | 'marked_money') => number;
         SetJobDuty: (onDuty: boolean) => void;
+        SetJob: (job: JobType, grade: number) => void;
         SetSkin: (skin: Skin, skipApply: boolean) => void;
     };
     PlayerData: PlayerData;
@@ -41,6 +43,14 @@ export type PlayerData = {
     skin: Skin;
     cloth_config: ClothConfig;
     source: number;
+};
+
+export type FakeId = {
+    id: string;
+    charinfo: PlayerCharInfo;
+    address: string;
+    job: JobType;
+    licenses: Record<DrivingSchoolLicenseType, number>;
 };
 
 // TODO: Finish to implement the other properties
@@ -206,7 +216,7 @@ export enum PlayerCriminalState {
 export type PlayerInsideState = {
     apartment: number | false;
     property: number | null;
-    exitCoord: { x: number; y: number; z: number } | false;
+    exitCoord: { x: number; y: number; z: number; w: number } | false;
 };
 
 export type PlayerMetadata = PlayerHealthBook & {

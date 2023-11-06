@@ -200,10 +200,15 @@ end
 
 function Inventory.SetMaxWeight(inv, weight)
     inv = Inventory(inv)
+    local overloaded = inv.maxWeight < inv.weight
     if inv then
         inv.maxWeight = weight
     end
+    if inv.type == "player" and (inv.maxWeight < inv.weight or (overloaded and inv.maxWeight >= inv.weight)) then
+        TriggerClientEvent("inventory:client:overloaded", inv.id, inv.maxWeight < inv.weight)
+    end
 end
+exports("CalculateAvailableWeight", Inventory.CalculateAvailableWeight)
 exports("CalculateWeight", Inventory.CalculateWeight)
 exports("SetMaxWeight", Inventory.SetMaxWeight)
 
@@ -429,6 +434,7 @@ end
 
 function Inventory.handleLunchbox(source, inv, slotItem, metadata, amount, item, slotId)
     local slot = -1
+    local exist = false
 
     if slotItem.name == "empty_lunchbox" then
         Inventory.RemoveItem(inv, slotItem.name, 1, nil, slotId)
@@ -438,13 +444,23 @@ function Inventory.handleLunchbox(source, inv, slotItem, metadata, amount, item,
     end
 
     local lunchboxTotalWeight = Inventory.getCrateWeight(slotItem.metadata)
-    table.insert(slotItem.metadata.crateElements, {
-        name = item.name,
-        label = item.label,
-        metadata = metadata,
-        amount = amount,
-        weight = Inventory.GetItemWeight(item, metadata, 1),
-    })
+
+    for _, element in pairs(slotItem.metadata.crateElements) do
+        if element.name == item.name and metadata.expiration == element.metadata.expiration then
+            element.amount = element.amount + amount
+            exist = true
+        end
+    end
+
+    if not exist then
+        table.insert(slotItem.metadata.crateElements, {
+            name = item.name,
+            label = item.label,
+            metadata = metadata,
+            amount = amount,
+            weight = Inventory.GetItemWeight(item, metadata, 1),
+        })
+    end
 
     local notificationLunchboxLabel = tostring(slotItem.label)
     if slotItem.metadata.label then
@@ -511,7 +527,6 @@ function Inventory.AddItem(source, inv, item, amount, metadata, slot, cb)
         reason = "invalid_alreadyhaveone"
         goto endAddItem
     end
-
     if slot then
         local slotItem = inv.items[slot]
         if not slotItem or not item.unique and slotItem and slotItem.name == item.name and table.matches(slotItem.metadata, metadata) then
@@ -544,6 +559,21 @@ function Inventory.AddItem(source, inv, item, amount, metadata, slot, cb)
             else
                 TriggerClientEvent("soz-core:client:notification:draw", source,
                                    "Impossible d'attacher ~b~" .. item.label .. "~s~ à vôtre ~g~" .. slotItem.label .. "~s~ !", "error")
+            end
+        elseif item.name == "kerosene_jerrycan" and slotItem and slotItem.name == "chainsaw" then
+            local metadata = {fuel = 20}
+            if slotItem.metadata.fuel ~= 20 then
+                Inventory.SetMetadata(inv, slotItem.slot, metadata)
+                amount = amount - 1
+                weight = Inventory.GetItemWeight(item, metadata, amount)
+                TriggerClientEvent("soz-core:client:notification:draw", source,
+                                   "Vous avez rempli votre ~b~" .. slotItem.label .. "~s~ avec un  ~g~" .. item.label .. "~s~ !", "success")
+                if amount == 0 then
+                    success = true
+                    goto endAddItem
+                end
+            else
+                TriggerClientEvent("soz-core:client:notification:draw", source, "Le réservoir de ~b~" .. slotItem.label .. "~s~ est déjà plein !", "error")
             end
         elseif slotItem and slotItem.type == "drug_pot" then
             local slotItemDef = QBCore.Shared.Items[slotItem.name]
@@ -614,6 +644,7 @@ function Inventory.RemoveItem(inv, item, amount, metadata, slot, allowMoreThanOw
     if type(item) ~= "table" then
         item = QBCore.Shared.Items[item]
     end
+    local overloaded = inv.type == "player" and inv.maxWeight < inv.weight
     amount = math.floor(amount + 0.5)
     if item and amount > 0 then
         if metadata ~= nil then
@@ -675,6 +706,11 @@ function Inventory.RemoveItem(inv, item, amount, metadata, slot, allowMoreThanOw
             inv.changed = true
             _G.Container[inv.type]:SyncInventory(inv.id, inv.items)
         end
+
+        if overloaded and inv.maxWeight >= inv.weight then
+            TriggerClientEvent("inventory:client:overloaded", inv.id, false)
+        end
+
         return removed
     end
     return false
@@ -693,6 +729,14 @@ function Inventory.TransfertItem(source, invSource, invTarget, item, amount, met
     if type(item) ~= "table" then
         item = QBCore.Shared.Items[item]
     end
+
+    if item["giveable"] == false then
+        if invSource.id ~= invTarget.id then
+            cb(false, "not_giveable")
+            return
+        end
+    end
+
     if not metadata then
         metadata = {}
     end
@@ -998,7 +1042,8 @@ function GetOrCreateInventory(storageType, invID, ctx)
         if targetInv == nil then
             targetInv = Inventory.Create("bin_" .. invID, invID, storageType, storageConfig.slot, storageConfig.weight, invID)
         end
-    elseif storageType == "trunk" or storageType == "brickade" or storageType == "tanker" or storageType == "trailerlogs" or storageType == "trash" then
+    elseif storageType == "trunk" or storageType == "brickade" or storageType == "tanker" or storageType == "trailerlogs" or storageType == "trash" or
+        storageType == "tiptruck" then
         targetInv = Inventory("trunk_" .. invID)
 
         if targetInv == nil then
@@ -1028,12 +1073,20 @@ function GetOrCreateInventory(storageType, invID, ctx)
     elseif storageType == "house_stash" then
         targetInv = Inventory("house_stash_" .. invID)
 
+        local tier = 0
+        if ctx then
+            tier = exports["soz-housing"]:GetApartmentTier(ctx.propertyId, ctx.apartmentId)
+        end
+        if invID == "villa_cayo" then
+            tier = -2
+        end
+
         if targetInv == nil then
-            local tier = 0
-            if ctx then
-                tier = ctx.apartmentTier
-            end
             targetInv = Inventory.Create("house_stash_" .. invID, invID, storageType, storageConfig[tier].slot, storageConfig[tier].weight, invID)
+        else
+            if targetInv.maxWeight ~= storageConfig[tier].weight then
+                Inventory.SetHouseStashMaxWeightFromTier(invID, tier)
+            end
         end
     elseif storageType == "house_fridge" then
         targetInv = Inventory("house_fridge_" .. invID)
@@ -1046,6 +1099,10 @@ function GetOrCreateInventory(storageType, invID, ctx)
 
         if targetInv == nil then
             targetInv = Inventory.Create("inverter_" .. invID, invID, storageType, storageConfig.slot, storageConfig.weight, "upw")
+        end
+    elseif storageType == "smuggling_box" then
+        if targetInv == nil then
+            targetInv = Inventory.Create(invID, invID, storageType, storageConfig.slot, storageConfig.weight, invID)
         end
     end
 

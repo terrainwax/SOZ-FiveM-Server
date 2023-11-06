@@ -74,6 +74,7 @@ export const SocietyNumberList: SocietyNumber = {
     lsmc: '555-LSMC',
     bcso: '555-BCSO',
     news: '555-NEWS',
+    'you-news': '555-YOUN',
     garbage: '555-BLUEBIRD',
     taxi: '555-CARLJR',
     food: '555-MARIUS',
@@ -85,4 +86,8 @@ export const SocietyNumberList: SocietyNumber = {
     baun: '555-BAUN',
     ffs: '555-FFS',
     mdr: '555-MDR',
+    sasp: '555-SASP',
+    fdf: '555-FDF',
+    gouv: '555-GOUV',
+    dmc: '555-DMC',
 };

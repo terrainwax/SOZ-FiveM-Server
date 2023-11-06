@@ -18,7 +18,7 @@ import { Notifier } from '../notifier';
 import { NuiDispatch } from '../nui/nui.dispatch';
 import { PlayerService } from '../player/player.service';
 import { ProgressService } from '../progress.service';
-import { UpwChargerRepository } from '../resources/upw.station.repository';
+import { UpwChargerRepository } from '../repository/upw.station.repository';
 import { SoundService } from '../sound.service';
 import { TargetFactory } from '../target/target.factory';
 import { VehicleService } from './vehicle.service';
@@ -186,6 +186,28 @@ export class VehicleElectricProvider {
                 item: 'energy_cell_wind',
             },
             {
+                label: "Recharger à l'énergie solaire",
+                color: JobType.Upw,
+                icon: 'c:fuel/charger.png',
+                blackoutGlobal: true,
+                blackoutJob: JobType.Upw,
+                job: JobType.Upw,
+                canInteract: () => {
+                    const player = this.playerService.getPlayer();
+                    return player && player.job.onduty;
+                },
+                action: entity => {
+                    const position = GetEntityCoords(entity) as Vector3;
+                    const charger = this.upwChargerRepository.getClosestCharger(position);
+
+                    if (!charger) {
+                        return false;
+                    }
+                    this.refillStation(charger.station, 'energy_cell_solar');
+                },
+                item: 'energy_cell_solar',
+            },
+            {
                 label: 'État de la station',
                 color: JobType.Upw,
                 icon: 'c:fuel/battery.png',
@@ -217,9 +239,19 @@ export class VehicleElectricProvider {
                         return false;
                     }
 
-                    const station = this.upwChargerRepository.getStationForEntity(entity);
+                    const stationName = this.upwChargerRepository.getStationForEntity(entity);
+
+                    if (!stationName) {
+                        return false;
+                    }
+
+                    const station = this.upwChargerRepository.getStation(stationName);
 
                     if (!station) {
+                        return false;
+                    }
+
+                    if (station.job && (player.job.id !== station.job || !player.job.onduty)) {
                         return false;
                     }
 
@@ -233,7 +265,7 @@ export class VehicleElectricProvider {
             },
             {
                 icon: 'c:fuel/plug.png',
-                label: 'Déposer la prise',
+                label: 'Reposer la prise',
                 action: (entity: number) => {
                     this.toggleStationPlug(entity);
                 },
@@ -418,6 +450,7 @@ export class VehicleElectricProvider {
         RopeUnloadTextures();
         DeleteRope(this.currentStationPlug.rope);
         SetEntityAsMissionEntity(this.currentStationPlug.object, true, true);
+        TriggerServerEvent(ServerEvent.OBJECT_ATTACHED_UNREGISTER, ObjToNet(this.currentStationPlug.object));
         DeleteEntity(this.currentStationPlug.object);
 
         this.currentStationPlug = null;
@@ -466,7 +499,10 @@ export class VehicleElectricProvider {
             true
         );
 
-        SetNetworkIdCanMigrate(ObjToNet(object), false);
+        const netId = ObjToNet(object);
+        SetNetworkIdCanMigrate(netId, false);
+        TriggerServerEvent(ServerEvent.OBJECT_ATTACHED_REGISTER, netId);
+
         AttachEntityToEntity(
             object,
             PlayerPedId(),
