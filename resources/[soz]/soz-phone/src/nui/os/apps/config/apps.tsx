@@ -33,8 +33,6 @@ import ZutomIcon from '../../../apps/zutom/icon';
 import { ZutomApp } from '../../../apps/zutom/ZutomApp';
 import ZpotifyIcon from '../../../apps/zpotify/icon';
 import { ZpotifyApp } from '../../../apps/zpotify';
-import WeatherIcon from '../../../apps/weather/icon';
-import { WeatherApp } from '../../../apps/weather';
 
 export interface IAppConfig {
     id: string;

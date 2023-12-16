@@ -14,6 +14,7 @@ export const RecordSubMenu: FunctionComponent<RecordSubMenuProps> = ({ banner, p
             <MenuTitle banner={banner}>Tu fais de la musique ?</MenuTitle>
             <MenuContent>
                 <MenuItemSubMenuLink id="record-add">👨‍💻 Créer un album</MenuItemSubMenuLink>
+                <MenuItemSubMenuLink id="record-add">👨‍💻 Créer un Artiste</MenuItemSubMenuLink>
             </MenuContent>
         </SubMenu>
     );

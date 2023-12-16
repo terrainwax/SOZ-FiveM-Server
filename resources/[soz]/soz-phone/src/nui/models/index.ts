@@ -16,7 +16,6 @@ import { photo } from './photo';
 import { avatar } from './sim/avatar';
 import { simCard } from './simCard';
 import { appZpotify } from './app/zpotify';
-import { appWeather } from './app/weather';
 
 export interface RootModel extends Models<RootModel> {
     // Core models
