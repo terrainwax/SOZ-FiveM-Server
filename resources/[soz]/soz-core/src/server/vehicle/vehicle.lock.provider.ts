@@ -1,4 +1,3 @@
-import { PlayerTalentService } from '@private/server/player/player.talent.service';
 import { waitUntil } from '@public/core/utils';
 import { Monitor } from '@public/server/monitor/monitor';
 import { getDistance, toVector3Object, Vector3 } from '@public/shared/polyzone/vector';
@@ -12,13 +11,11 @@ import { ClientEvent, ServerEvent } from '../../shared/event';
 import { InventoryItem, Item } from '../../shared/item';
 import { getRandomInt } from '../../shared/random';
 import { RpcServerEvent } from '../../shared/rpc';
-import { PrismaService } from '../database/prisma.service';
 import { InventoryManager } from '../inventory/inventory.manager';
 import { ItemService } from '../item/item.service';
 import { Notifier } from '../notifier';
 import { PlayerService } from '../player/player.service';
 import { ProgressService } from '../player/progress.service';
-import { VehiclePlayerRepository } from './vehicle.player.repository';
 import { VehicleSpawner } from './vehicle.spawner';
 import { VehicleStateService } from './vehicle.state.service';
 
@@ -26,9 +23,6 @@ import { VehicleStateService } from './vehicle.state.service';
 export class VehicleLockProvider {
     @Inject(VehicleStateService)
     private vehicleStateService: VehicleStateService;
-
-    @Inject(VehiclePlayerRepository)
-    private vehiclePlayerRepository: VehiclePlayerRepository;
 
     @Inject(PlayerService)
     private playerService: PlayerService;
@@ -48,8 +42,8 @@ export class VehicleLockProvider {
     @Inject(ProgressService)
     private progressService: ProgressService;
 
-    @Inject(PlayerTalentService)
-    private playerTalentService: PlayerTalentService;
+    @Inject(Monitor)
+    private monitor: Monitor;
 
     @Inject(PrismaService)
     private prismaService: PrismaService;
@@ -65,6 +59,31 @@ export class VehicleLockProvider {
         this.item.setItemUseCallback('lockpick_low', this.useLockpick.bind(this));
         this.item.setItemUseCallback('lockpick_medium', this.useLockpick.bind(this));
         this.item.setItemUseCallback('lockpick_high', this.useLockpick.bind(this));
+        this.item.setItemUseCallback('halloween_spectral_lockpick', this.useLockpick.bind(this));
+    }
+
+    @OnEvent(ServerEvent.VEHICLE_SET_OPEN)
+    public onVehicleSetOpen(source: number, vehicleNetworkId: number, isOpen: boolean) {
+        this.vehicleStateService.updateVehicleVolatileState(
+            vehicleNetworkId,
+            {
+                open: isOpen,
+            },
+            null,
+            true
+        );
+
+        this.vehicleStateService.handleVehicleOpenChange(vehicleNetworkId);
+    }
+
+    @Rpc(RpcServerEvent.VEHICLE_GET_OPENED)
+    public getVehicleOpened(): number[] {
+        return [...this.vehicleStateService.vehicleOpened];
+    }
+
+    @OnEvent(ServerEvent.VEHICLE_LOCKPICK)
+    public async onLockpick(source: number, item: InventoryItem, vehNetId: number) {
+        await this.onLockpickInternal(source, item, NetworkGetEntityFromNetworkId(vehNetId), vehNetId);
     }
 
     @OnEvent(ServerEvent.VEHICLE_SET_OPEN)
@@ -93,32 +112,46 @@ export class VehicleLockProvider {
             return;
         }
 
-        const lockPickDuration = 10000; // 10 seconds
-        const percentages = {
-            lockpick_low: 60,
-            lockpick_medium: 80,
-            lockpick_high: 99,
-            lockpick: 100,
-        };
-
         const closestVehicle = await this.vehicleSpawner.getClosestVehicle(source);
-
         if (null === closestVehicle || closestVehicle.distance > 3) {
             this.notifier.notify(source, 'Aucun véhicule à proximité', 'error');
 
             return;
         }
 
-        const vehicleType = GetVehicleType(closestVehicle.vehicleEntityId);
-        if (item.name === 'lockpick' && inventoryItem.metadata?.type) {
-            const model = GetEntityModel(closestVehicle.vehicleEntityId);
+        await this.onLockpickInternal(
+            source,
+            inventoryItem,
+            closestVehicle.vehicleEntityId,
+            closestVehicle.vehicleNetworkId
+        );
+    }
+
+    private async onLockpickInternal(
+        source: number,
+        inventoryItem: InventoryItem,
+        vehicleEntityId: number,
+        vehicleNetworkId: number
+    ) {
+        const lockPickDuration = 10000; // 10 seconds
+        const percentages = {
+            lockpick_low: 60,
+            lockpick_medium: 80,
+            halloween_spectral_lockpick: 80,
+            lockpick_high: 99,
+            lockpick: 100,
+        };
+
+        const vehicleType = GetVehicleType(vehicleEntityId);
+        const model = GetEntityModel(vehicleEntityId);
+        if (inventoryItem.name === 'lockpick' && inventoryItem.metadata?.type) {
             if (GetHashKey(inventoryItem.metadata?.model) !== model) {
                 this.notifier.notify(source, 'Ce lockpick ne peux pas crocheter ce véhicule', 'error');
 
                 return;
             }
         } else if (
-            item.name === 'lockpick_low' &&
+            inventoryItem.name === 'lockpick_low' &&
             vehicleType !== 'automobile' &&
             vehicleType !== 'bike' &&
             vehicleType !== 'trailer'
@@ -127,7 +160,7 @@ export class VehicleLockProvider {
 
             return;
         } else if (
-            item.name === 'lockpick_medium' &&
+            (inventoryItem.name === 'lockpick_medium' || inventoryItem.name === 'halloween_spectral_lockpick') &&
             vehicleType !== 'automobile' &&
             vehicleType !== 'bike' &&
             vehicleType !== 'trailer' &&
@@ -148,11 +181,7 @@ export class VehicleLockProvider {
         const ped = GetPlayerPed(source);
 
         waitUntil(
-            async () =>
-                getDistance(
-                    GetEntityCoords(ped) as Vector3,
-                    GetEntityCoords(closestVehicle.vehicleEntityId) as Vector3
-                ) > 3.0,
+            async () => getDistance(GetEntityCoords(ped) as Vector3, GetEntityCoords(vehicleEntityId) as Vector3) > 3.0,
             lockPickDuration
         ).then(isTooFar => {
             if (isTooFar) {
@@ -162,7 +191,7 @@ export class VehicleLockProvider {
         });
 
         if (Math.random() < LockPickAlertChance) {
-            TriggerClientEvent(ClientEvent.VEHICLE_LOCKPICK, source, 'lockpick');
+            TriggerClientEvent(ClientEvent.VEHICLE_LOCKPICK, source, 'lockpick', model);
         }
 
         const { completed } = await this.progressService.progress(
@@ -182,11 +211,11 @@ export class VehicleLockProvider {
         }
 
         const random = getRandomInt(0, 100);
-        const vehicleState = this.vehicleStateService.getVehicleState(closestVehicle.vehicleNetworkId);
+        const vehicleState = this.vehicleStateService.getVehicleState(vehicleNetworkId);
 
         if (
-            random > percentages[item.name] ||
-            (vehicleState.volatile.isPlayerVehicle && item.name != 'lockpick_high')
+            random > percentages[inventoryItem.name] ||
+            (vehicleState.volatile.isPlayerVehicle && inventoryItem.name != 'lockpick_high')
         ) {
             this.notifier.notify(source, "Vous n'avez pas réussi à crocheter le véhicule", 'error');
 
@@ -215,18 +244,18 @@ export class VehicleLockProvider {
                 player_source: source,
             },
             {
-                item: item.name,
+                item: inventoryItem.name,
                 location: toVector3Object(GetEntityCoords(GetPlayerPed(source)) as Vector3),
-                vehicle_plate: GetVehicleNumberPlateText(closestVehicle.vehicleEntityId),
+                vehicle_plate: GetVehicleNumberPlateText(vehicleEntityId),
                 player_vehicle: vehicleState.volatile.isPlayerVehicle,
             }
         );
 
-        this.vehicleStateService.updateVehicleVolatileState(closestVehicle.vehicleNetworkId, {
+        this.vehicleStateService.updateVehicleVolatileState(vehicleNetworkId, {
             forced: true,
         });
 
-        this.vehicleStateService.handleVehicleOpenChange(closestVehicle.vehicleNetworkId);
+        this.vehicleStateService.handleVehicleOpenChange(vehicleNetworkId);
 
         this.notifier.notify(source, 'Le véhicule a été forcé.', 'success');
     }

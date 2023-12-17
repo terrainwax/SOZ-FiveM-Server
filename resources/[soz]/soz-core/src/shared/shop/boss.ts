@@ -1,4 +1,5 @@
 import { JobType } from '../job';
+import { BoxZone } from '../polyzone/box.zone';
 import { ShopConfig } from '../shop';
 
 export const BossShop: (ShopConfig & { job: JobType })[] = [
@@ -60,6 +61,32 @@ export const BossShop: (ShopConfig & { job: JobType })[] = [
             { id: 'n_camera', type: 'item', price: 250 },
             { id: 'n_bmic', type: 'item', price: 100 },
             { id: 'microphone', type: 'item', price: 50 },
+            { id: 'press_card', type: 'item', price: 1000 },
+        ],
+    },
+    {
+        name: 'you-news',
+        job: JobType.YouNews,
+        zone: {
+            center: [-1067.29, -244.13, 44.02],
+            length: 0.8,
+            width: 1.4,
+            heading: 297.35,
+            minZ: 43.02,
+            maxZ: 45.02,
+        },
+        targets: [],
+        products: [
+            { id: 'armor', type: 'item', metadata: { label: 'You News', type: 'you-news' }, price: 150 },
+            { id: 'n_fix_camera', type: 'item', price: 250 },
+            { id: 'n_fix_greenscreen', type: 'item', price: 150 },
+            { id: 'n_fix_light', type: 'item', price: 80 },
+            { id: 'n_fix_mic', type: 'item', price: 60 },
+            { id: 'n_mic', type: 'item', price: 50 },
+            { id: 'n_camera', type: 'item', price: 250 },
+            { id: 'n_bmic', type: 'item', price: 100 },
+            { id: 'microphone', type: 'item', price: 50 },
+            { id: 'press_card', type: 'item', price: 1000 },
         ],
     },
     {
@@ -123,6 +150,7 @@ export const BossShop: (ShopConfig & { job: JobType })[] = [
             { id: 'wheel_kit', type: 'item', price: 80 },
             { id: 'diagnostic_pad', type: 'item', price: 260 },
             { id: 'oil_jerrycan', type: 'item', price: 100 },
+            { id: 'tow_cable', type: 'item', price: 250 },
         ],
     },
     {
@@ -144,19 +172,17 @@ export const BossShop: (ShopConfig & { job: JobType })[] = [
             { id: 'wheel_kit', type: 'item', price: 80 },
             { id: 'diagnostic_pad', type: 'item', price: 260 },
             { id: 'oil_jerrycan', type: 'item', price: 100 },
+            { id: 'tow_cable', type: 'item', price: 250 },
         ],
     },
     {
         name: 'lsmc',
         job: JobType.LSMC,
-        zone: {
-            center: [309.79, -1417.49, 32.51],
-            length: 0.6,
-            width: 1.25,
-            heading: 50,
-            minZ: 31.51,
-            maxZ: 32.51,
-        },
+        zone: new BoxZone([373.79, -1420.17, 37.99], 1.0, 2.6, {
+            heading: 320.64,
+            minZ: 36.99,
+            maxZ: 38.99,
+        }),
         targets: [],
         products: [
             { id: 'outfit', type: 'item', metadata: { label: 'LSMC', type: 'lsmc' }, price: 100 },

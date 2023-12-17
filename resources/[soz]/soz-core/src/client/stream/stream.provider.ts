@@ -34,6 +34,7 @@ export class StreamProvider {
         const position = GetEntityCoords(PlayerPedId(), false) as Vector3;
         const streamUrls = this.store.getState().global.streamUrls;
 
+        this.cinemaScreen.update(position, streamUrls.cinema);
         this.bennysScreen.update(position, streamUrls.bennys);
     }
 

@@ -36,7 +36,6 @@ export interface RootModel extends Models<RootModel> {
     appInvoices: typeof appInvoices;
     appTwitchNews: typeof appTwitchNews;
     appSociety: typeof appSociety;
-    appZpotify: typeof appZpotify;
     appWeather: typeof appWeather;
     appTetrisLeaderboard: typeof appTetrisLeaderboard;
 }
@@ -54,7 +53,6 @@ export const models: RootModel = {
     appInvoices,
     appTwitchNews,
     appSociety,
-    appZpotify,
     appWeather,
     emergency,
     appTetrisLeaderboard,

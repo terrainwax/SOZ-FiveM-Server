@@ -137,6 +137,22 @@ export const TopHeaderBar: FunctionComponent = memo(() => {
                                 onClickClose={() => {}}
                             />
                         )}
+                        {config.planeMode && (
+                            <NotificationItem
+                                app="settings"
+                                title={t('SETTINGS.OPTIONS.PLANE_MODE')}
+                                content={t('SETTINGS.OPTIONS.PLANE_MODE_ACTIVATED')}
+                                onClick={() => {
+                                    setBarUncollapsed(false);
+                                    navigate('/settings');
+                                }}
+                                notificationIcon={() => (
+                                    <PaperAirplaneIcon className="h-5 w-5 rounded-md bg-orange-500 p-0.5" />
+                                )}
+                                onClose={() => {}}
+                                onClickClose={() => {}}
+                            />
+                        )}
                         {notifications.map((notification, idx) => (
                             <NotificationItem
                                 key={idx}

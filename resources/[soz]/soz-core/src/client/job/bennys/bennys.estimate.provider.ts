@@ -4,9 +4,9 @@ import { Provider } from '../../../core/decorators/provider';
 import { ServerEvent } from '../../../shared/event';
 import { JobPermission, JobType } from '../../../shared/job';
 import { PlayerService } from '../../player/player.service';
-import { Qbcore } from '../../qbcore';
 import { TargetFactory } from '../../target/target.factory';
 import { VehicleModificationService } from '../../vehicle/vehicle.modification.service';
+import { JobService } from '../job.service';
 
 @Provider()
 export class BennysEstimateProvider {
@@ -16,8 +16,11 @@ export class BennysEstimateProvider {
     @Inject(TargetFactory)
     private targetFactory: TargetFactory;
 
-    @Inject(Qbcore)
-    private QBCore: Qbcore;
+    @Inject(JobService)
+    private jobService: JobService;
+
+    @Inject(VehicleModificationService)
+    private vehicleModificationService: VehicleModificationService;
 
     @Inject(VehicleModificationService)
     private vehicleModificationService: VehicleModificationService;
@@ -33,7 +36,7 @@ export class BennysEstimateProvider {
                 canInteract: () => {
                     return (
                         this.playerService.isOnDuty() &&
-                        this.QBCore.hasJobPermission('bennys', JobPermission.BennysEstimate)
+                        this.jobService.hasPermission(JobType.Bennys, JobPermission.BennysEstimate)
                     );
                 },
                 action: async vehicle => {

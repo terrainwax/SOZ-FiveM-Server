@@ -28,7 +28,6 @@
         "cardinal": "^2.1.1",
         "classnames": "^2.3.1",
         "date-fns": "^2.30.0",
-        "dexie": "^3.2.4",
         "dompurify": "^2.3.3",
         "emoji-mart": "^5.2.2",
         "emoji-picker-react": "^4.4.4",

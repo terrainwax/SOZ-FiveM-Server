@@ -1,5 +1,4 @@
 QBCore = exports["qb-core"]:GetCoreObject()
-SozJobCore = exports["soz-jobs"]:GetCoreObject()
 
 function tprint (t, s)
     for k, v in pairs(t) do
@@ -40,21 +39,6 @@ setmetatable(Inventory, {
 
 MySQL.ready(function()
     local StorageNotLoaded = table.clone(Config.Storages)
-
-    QBCore.Shared.Items["newtestitem"] = {
-        ['name'] = '900k_album',
-        ['label'] = "Album 900k",
-        ['weight'] = 200,
-        ['type'] = 'item',
-        ['unique'] = false,
-        ['useable'] = true,
-        ['shouldClose'] = true,
-        ['combinable'] = nil,
-        ['description'] = "Album musical du plus grand des artistes français.",
-        ['illustrator'] = '.Nariiel'
-    }
-
-    print(tprint(QBCore.Shared.Items))
 
     -- delete inventory of non players cars to avoid having an NPC car with same plate retrieving an existing inventory
     MySQL.query(
@@ -506,6 +490,9 @@ function Inventory.AddItem(source, inv, item, amount, metadata, slot, cb)
             metadata.serial = tostring(QBCore.Shared.RandomInt(2) .. QBCore.Shared.RandomStr(3) .. QBCore.Shared.RandomInt(1) .. QBCore.Shared.RandomStr(2) ..
                                            QBCore.Shared.RandomInt(3) .. QBCore.Shared.RandomStr(4))
         end
+        if metadata.tint == nil then
+            metadata.tint = 0
+        end
         if metadata.health == nil then
             metadata.health = 2000
         end
@@ -577,8 +564,8 @@ function Inventory.AddItem(source, inv, item, amount, metadata, slot, cb)
             end
         elseif slotItem and slotItem.type == "drug_pot" then
             local slotItemDef = QBCore.Shared.Items[slotItem.name]
-            if slotItemDef.drug_pot.ingredient == item.name and amount >= slotItemDef.drug_pot.nbIngredient and not exports["soz-utils"]:ItemIsExpired(slotItem) and
-                not exports["soz-utils"]:ItemIsExpired({metadata = metadata}) then
+            if slotItemDef.drug_pot.ingredient == item.name and amount >= slotItemDef.drug_pot.nbIngredient and not exports["soz-core"]:ItemIsExpired(slotItem) and
+                not exports["soz-core"]:ItemIsExpired({metadata = metadata}) then
                 Inventory.RemoveItem(inv, slotItemDef.name, 1, nil, slotItem.slot)
                 Inventory.AddItem(source, inv, slotItemDef.drug_pot.target, 1)
                 amount = amount - slotItemDef.drug_pot.nbIngredient
@@ -731,7 +718,7 @@ function Inventory.TransfertItem(source, invSource, invTarget, item, amount, met
     end
 
     if item["giveable"] == false then
-        if invSource.id ~= invTarget.id then
+        if invSource.id ~= invTarget.id and not QBCore.Functions.HasPermission(source, "staff") then
             cb(false, "not_giveable")
             return
         end
@@ -812,6 +799,14 @@ function Inventory.TransfertItem(source, invSource, invTarget, item, amount, met
             end
             success, reason = s, r
         end)
+
+        exports["soz-core"]:Event("transfer_item", {
+            source_owner = invSource.owner,
+            source_id = invSource.type,
+            target_owner = invTarget.owner,
+            target_id = invTarget.type,
+            player_source = source,
+        }, {item = item.name, itemLabel = item.label, amount = amount})
 
         _G.Container[invSource.type]:SyncInventory(invSource.id, invSource.items)
         _G.Container[invTarget.type]:SyncInventory(invTarget.id, invTarget.items)
@@ -1075,7 +1070,7 @@ function GetOrCreateInventory(storageType, invID, ctx)
 
         local tier = 0
         if ctx then
-            tier = exports["soz-housing"]:GetApartmentTier(ctx.propertyId, ctx.apartmentId)
+            tier = exports["soz-core"]:GetApartmentTier(ctx.propertyId, ctx.apartmentId)
         end
         if invID == "villa_cayo" then
             tier = -2

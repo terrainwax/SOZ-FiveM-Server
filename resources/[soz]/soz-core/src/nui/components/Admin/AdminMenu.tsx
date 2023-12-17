@@ -54,10 +54,8 @@ export const AdminMenu: FunctionComponent<AdminMenuStateProps> = ({ data }) => {
             <JobSubMenu banner={data.banner} />
             <SkinSubMenu banner={data.banner} state={data.state.skin} />
             <VehicleSubMenu banner={data.banner} permission={data.permission} state={data.state.vehicule} />
-            <PlayerSubMenu banner={data.banner} permission={data.permission} />
+            <PlayerSubMenu banner={data.banner} permission={data.permission} parties={data.parties} />
             <DeveloperSubMenu banner={data.banner} state={data.state.developer} />
-            <RecordSubMenu banner={data.banner} permission={data.permission} />
-            <RecordAddSubMenu banner={data.banner} permission={data.permission}/>
             <CharacterSubMenu banner={data.banner} characters={data.characters} />
         </Menu>
     );
